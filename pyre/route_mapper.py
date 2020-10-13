@@ -37,35 +37,37 @@ def parse_route(route: str):
     # We just need some string that has a very low chance of being
     # used in production for a route to then split off.
     subbed_route = _converter_re.sub("__FOO_REPLACE__", route)
-
     split_route = subbed_route.split("__FOO_REPLACE__")
 
-    should_raise = False
-    output_str = ""
+    output_regex, path_exists = "", False
     for i, (split, converter) in enumerate(zip(split_route, converter_matches)):
-        if should_raise:
+        if converter[1] == "":
+            raise ValueError(f"Parameter {converter[1]!r} converter type cannot be empty.")
+
+        if path_exists:
             raise ValueError(
                 "Url cannot have anything following after a 'path' converter.\n"
                 "If you are attempting to match anything other than '/' use the 'string' converter"
             )
 
         converter_re = _standard_type_converter.get(converter[1].lower(), converter[1])
-        output_str += "{split}{converter}".format(
-            split=split,
-            converter=f"(?P<{converter[0]}>{converter_re})"
-        )
+        output_regex += f"{split}(?P<{converter[0]}>{converter_re})"
 
         if converter[1].lower() == "path":
-            should_raise = True
+            path_exists = True
 
-    print(output_str)
-    regex = re.compile(output_str, re.VERBOSE)
+    return output_regex
 
+
+def test_regex(regex_str: str, test_string: str):
+    regex = re.compile(regex_str, re.VERBOSE)
     start = time.perf_counter()
-    x = regex.match("/abc/981a-2341/owow123") is not None
+    x = regex.fullmatch(test_string) is not None
     stop = time.perf_counter() - start
-    print(x)
-    print(stop * 1000)
+    print(f"Regex Matched: {x}")
+    print(f"Time Taken: {stop * 1000}ms")
 
 
-parse_route("/abc/{p:string}/{x:[^>]+}")
+if __name__ == '__main__':
+    built_regex = parse_route("/abc/{p:path}")
+    test_regex(built_regex, "/abc/981a-2341/owow12/ayacuac.txt")

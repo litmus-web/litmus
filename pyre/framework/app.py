@@ -46,4 +46,5 @@ class AppRunner:
         self._max_headers = max_headers
 
     def run(self):
+        pass
 
