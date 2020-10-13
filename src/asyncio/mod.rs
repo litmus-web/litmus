@@ -27,3 +27,8 @@ pub fn close_transport(py: Python, transport: &PyObject) -> PyResult<()> {
     transport.call_method0(py, "close")?;
     Ok(())
 }
+
+pub fn pause_reading_transport(py: Python, transport: &PyObject) -> PyResult<()> {
+    transport.call_method0(py, "pause_reading")?;
+    Ok(())
+}

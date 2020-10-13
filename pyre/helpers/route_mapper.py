@@ -2,10 +2,6 @@ import re
 
 __all__ = [
     "parse_route",
-    "RouteError",
-    "KeywordRouteError",
-    "ConverterEmpty",
-    "PathNotLastError"
 ]
 
 _converter_re = re.compile("\{([^}]+):([^}]+)\}", re.VERBOSE)
@@ -20,22 +16,6 @@ _standard_type_converter = {
 }
 
 
-class RouteError(Exception):
-    """ A base route error that gets raised by the route compiler """
-
-
-class KeywordRouteError(RouteError):
-    """ Raised when a keyword the route builder uses has been entered as a route """
-
-
-class PathNotLastError(RouteError):
-    """ Raised when the 'path' converter is used in the middle of a route invalidating the regex """
-
-
-class ConverterEmpty(RouteError):
-    """ Raised when the converter is left blank """
-
-
 def parse_route(route_str: str) -> str:
     """ parse route asumes the route contains no duplicate `//`
     as the framework should automatically remove them.
@@ -46,7 +26,7 @@ def parse_route(route_str: str) -> str:
     which can then be handed back to rust upon a url route.
     """
     if "__FOO_REPLACE__" in route_str:
-        raise KeywordRouteError(f"Route: {route_str!r} cannot contain a reserved keyword.")
+        raise ValueError(f"Route: {route_str!r} cannot contain a reserved keyword.")
 
     # Matches anything in the `{variable:converter}` pattern and
     # gives us the variable name and converter name in the form of
@@ -61,10 +41,10 @@ def parse_route(route_str: str) -> str:
     output_regex, path_exists = "", False
     for split, converter in zip(split_route, converter_matches):
         if converter[1] == "":
-            raise ConverterEmpty(f"Parameter {converter[1]!r} converter type cannot be empty.")
+            raise ValueError(f"Parameter {converter[1]!r} converter type cannot be empty.")
 
         if path_exists:
-            raise PathNotLastError(
+            raise ValueError(
                 "Url cannot have anything following after a 'path' converter.\n"
                 "If you are attempting to match anything other than '/' use the 'string' converter"
             )

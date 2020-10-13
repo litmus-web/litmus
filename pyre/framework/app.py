@@ -18,17 +18,8 @@ class WebApplication:
         else:
             methods = set(methods)
 
-        if route.startswith("/"):
-            route = route.lstrip("/")
-
-        # We dont want to handle duplicated `//` as it'll break the next part
-        while "//" in route:
-            route = route.replace("//", "/")
-
-        route_parts = route.split("/")
-
-
-
+        if not route.startswith("/"):
+            route = f"/{route}"
 
 
 

@@ -75,7 +75,6 @@ impl RustProtocol {
 
         }
 
-        
         Ok(())
     }
 
@@ -95,15 +94,19 @@ impl RustProtocol {
     /// When the connection is closed, connection_lost() is called.
     fn connection_made(&mut self, py: Python, transport: PyObject) -> PyResult<()>{
         // self.transport = Some(transport.clone());
+        // let _ = asyncio::pause_reading_transport(py, &transport);
 
 
         let _ = asyncio::write_transport(
-            py, &transport, b"\
+            py, &transport, "\
             HTTP/1.1 200 OK\r\n\
-            Content-Length: 88\r\n\
-            Content-Type: text/html\r\n\
-            Connection: Closed\r\n\r\n
-            <html><body><h1>Hello, World!</h1></body></html>"
+            date: Tue, 13 Oct 2020 20:41:26 GMT\r\n\
+            server: uvicorn\r\n\
+            content-type: text/plain; charset=utf-8\r\n\
+            transfer-encoding: chunked\r\n".as_bytes()
+        )?;
+        let _ = asyncio::write_transport(
+            py, &transport, "content-length: 10\r\n\r\nHelloWorld!".as_bytes()
         )?;
         let _ = asyncio::write_eof_transport(py, &transport)?;
         let _ = asyncio::close_transport(py, &transport)?;
