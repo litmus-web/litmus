@@ -13,7 +13,7 @@ _standard_type_converter = {
     "string": r"[^\/]*",
     "int": r"[0-9]+",
     "path": r".*",
-    "uuid": r""
+    "uuid": r"\b[0-9a-f]{8}\b-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-\b[0-9a-f]{12}\b"
 }
 
 
@@ -69,5 +69,24 @@ def test_regex(regex_str: str, test_string: str):
 
 
 if __name__ == '__main__':
-    built_regex = parse_route("/abc/{p:path}")
+    import itertools
+
+    test_paths = [
+        "abc",
+        "foo",
+        "",
+        "bar",
+        "delta123",
+        "1234",
+        "0",
+        "0-012-2452-2342",
+        "6a2f41a3-c54c-fce8-32d2-0324e1c32e22",
+        "file.txt"
+    ]
+    test_paths.extend(_standard_type_converter.keys())
+    combinations = itertools.permutations(test_paths, 5)
+    for combo in combinations:
+        pass
+
+    built_regex = parse_route("/abc/{p:uuid}")
     test_regex(built_regex, "/abc/981a-2341/owow12/ayacuac.txt")
