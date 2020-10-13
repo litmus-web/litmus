@@ -12,6 +12,7 @@ class WebApplication:
             methods=None,
             cache_response=False,
     ) -> None:
+
         if methods is None:
             methods = {"GET"}
         else:
