@@ -1,5 +1,6 @@
 mod utils;
 mod asyncio;
+mod http;
 
 use pyo3::prelude::*;
 use pyo3::{exceptions, PyAsyncProtocol, PyIterProtocol};
@@ -9,6 +10,7 @@ use std::collections::HashMap;
 
 use regex::Regex;
 use once_cell::sync::OnceCell;
+use std::error::Error;
 
 
 static CELL: OnceCell<Vec<Regex>> = OnceCell::new();
@@ -53,7 +55,8 @@ impl RustProtocol {
         let res = match result {
             Ok(r) => r,
             Err(e) => {
-                return Err(exceptions::PyRuntimeError::new_err(format!("{:?}", e)))     // todo handle as a response instead
+                return Err(exceptions::PyRuntimeError::new_err(format!("{:?}", e.backtrace())))
+                // todo handle as a response instead
             }
         };
 
@@ -93,23 +96,10 @@ impl RustProtocol {
     /// To receive data, wait for data_received() calls.
     /// When the connection is closed, connection_lost() is called.
     fn connection_made(&mut self, py: Python, transport: PyObject) -> PyResult<()>{
-        // self.transport = Some(transport.clone());
+        self.transport = Some(transport.clone());
         // let _ = asyncio::pause_reading_transport(py, &transport);
 
 
-        let _ = asyncio::write_transport(
-            py, &transport, "\
-            HTTP/1.1 200 OK\r\n\
-            date: Tue, 13 Oct 2020 20:41:26 GMT\r\n\
-            server: uvicorn\r\n\
-            content-type: text/plain; charset=utf-8\r\n\
-            transfer-encoding: chunked\r\n".as_bytes()
-        )?;
-        let _ = asyncio::write_transport(
-            py, &transport, "content-length: 10\r\n\r\nHelloWorld!".as_bytes()
-        )?;
-        let _ = asyncio::write_eof_transport(py, &transport)?;
-        let _ = asyncio::close_transport(py, &transport)?;
 
         Ok(())
     }
@@ -153,6 +143,25 @@ impl RustProtocol {
 
     }
 }
+
+impl RustProtocol {
+    fn start_response(&mut self, status: u16,) {
+        let _ = asyncio::write_transport(
+            py, &transport, "\
+            HTTP/1.1 200 OK\r\n\
+            date: Tue, 13 Oct 2020 20:41:26 GMT\r\n\
+            server: uvicorn\r\n\
+            content-type: text/plain; charset=utf-8\r\n\
+            transfer-encoding: chunked\r\n".as_bytes()
+        )?;
+        let _ = asyncio::write_transport(
+            py, &transport, "content-length: 10\r\n\r\nHelloWorld!".as_bytes()
+        )?;
+        let _ = asyncio::write_eof_transport(py, &transport)?;
+        let _ = asyncio::close_transport(py, &transport)?;
+    }
+}
+
 
 
 #[pyclass]
