@@ -165,7 +165,7 @@ impl RustProtocol {
                     format!("Status code {:?} is not a recognised code.", status)))
         }
 
-        let first_line = format!("{}{}", "HTTP/1.1", status_line).as_bytes();
+        let first_line ="HTTP/1.1" + status_line + "\r\n";
 
 
         let _ = asyncio::write_transport(py, &self.transport, b"")?;
