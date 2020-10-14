@@ -76,12 +76,12 @@ impl RustProtocol {
                 new_headers.insert(header.name.to_string(),  header.value.to_vec());
             }
 
-            // let task = RequestResponseCycle::new(
-            //    method,
-            //    path,
-            //    new_headers
-            // );
-            // let _ = asyncio::create_server_task(py, task);
+            let task = RequestResponseCycle::new(
+                method,
+                path,
+                new_headers
+            );
+            let _ = asyncio::create_server_task(py, task);
 
             self.start_response(
                 py,
@@ -191,7 +191,6 @@ impl RustProtocol {
         let _ = asyncio::write_transport(py, &self.transport, header_block.as_ref())?;
         let _ = asyncio::write_eof_transport(py, &self.transport)?;
 
-        // let _ = asyncio::close_transport(py, &self.transport)?;
         Ok(())
     }
 }
