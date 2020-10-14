@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 
 // 1xx codes
 static STATUS_100: &[u8] = b"100 Continue";
@@ -68,6 +69,15 @@ static STATUS_507: &[u8] = b"507 Insufficient Storage";
 static STATUS_508: &[u8] = b"508 Loop Detected";
 static STATUS_510: &[u8] = b"510 Not Extended";
 static STATUS_511: &[u8] = b"511 Network Authentication Required";
+
+static CODE_MAP: HashMap<u16, &[u8]> = {
+    let mut map = HashMap::new();
+
+    map.insert(100, STATUS_100);
+
+
+    map
+};
 
 pub fn get_bytes_from_u16(status: u16) {
 
