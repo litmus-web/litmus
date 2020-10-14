@@ -10,17 +10,16 @@ use std::collections::HashMap;
 
 use regex::Regex;
 use once_cell::sync::OnceCell;
-use std::error::Error;
 
 
-static CELL: OnceCell<Vec<Regex>> = OnceCell::new();
+static URL_REGEX: OnceCell<Vec<Regex>> = OnceCell::new();
 
 const MAX_HEADERS: usize = 32;
 
 
 #[pyclass]
 struct RustProtocol {
-    transport: Option<PyObject>,
+    transport: PyObject,
     loop_: PyObject,
 }
 
@@ -28,19 +27,27 @@ struct RustProtocol {
 impl RustProtocol {
     #[new]
     fn new(py: Python, regex_patterns: Vec<&str>) -> Self {
-        let mut loop_ = asyncio::get_loop(py);
 
+        // get the running event loop from python
+        let mut loop_ = asyncio::get_loop(py);
         if loop_.is_err() {
             return panic!("Cannot get event loop.");
         }
 
+        // uses the event loop just as a dud object, to get
+        // overridden later.
+        let dud = asyncio::get_loop(py);
+        if dud.is_err() {
+            return panic!("Cannot get event loop.");
+        }
+
         // Set-up regex on the global scale to help efficiency.
-        let _: &Vec<Regex> = CELL.get_or_init(|| {
+        let _: &Vec<Regex> = URL_REGEX.get_or_init(|| {
             utils::make_regex_from_vec(regex_patterns)
         });
 
         RustProtocol{
-            transport: None,
+            transport: dud.unwrap(),
             loop_: loop_.unwrap(),
         }
     }
@@ -55,7 +62,7 @@ impl RustProtocol {
         let res = match result {
             Ok(r) => r,
             Err(e) => {
-                return Err(exceptions::PyRuntimeError::new_err(format!("{:?}", e.backtrace())))
+                return Err(exceptions::PyRuntimeError::new_err(format!("{}", e.to_string())))
                 // todo handle as a response instead
             }
         };
@@ -96,7 +103,7 @@ impl RustProtocol {
     /// To receive data, wait for data_received() calls.
     /// When the connection is closed, connection_lost() is called.
     fn connection_made(&mut self, py: Python, transport: PyObject) -> PyResult<()>{
-        self.transport = Some(transport.clone());
+        self.transport = transport;
         // let _ = asyncio::pause_reading_transport(py, &transport);
 
 
@@ -145,20 +152,27 @@ impl RustProtocol {
 }
 
 impl RustProtocol {
-    fn start_response(&mut self, status: u16,) {
-        let _ = asyncio::write_transport(
-            py, &transport, "\
-            HTTP/1.1 200 OK\r\n\
-            date: Tue, 13 Oct 2020 20:41:26 GMT\r\n\
-            server: uvicorn\r\n\
-            content-type: text/plain; charset=utf-8\r\n\
-            transfer-encoding: chunked\r\n".as_bytes()
-        )?;
-        let _ = asyncio::write_transport(
-            py, &transport, "content-length: 10\r\n\r\nHelloWorld!".as_bytes()
-        )?;
-        let _ = asyncio::write_eof_transport(py, &transport)?;
-        let _ = asyncio::close_transport(py, &transport)?;
+    fn start_response(
+        &mut self,
+        py: Python,
+        status: u16,
+        headers: Vec<(&[u8], &[u8])>,
+    ) -> PyResult<()> {
+        let status_line = http::get_status_from_u16(status);
+        if status_line == "" {
+            return Err(
+                exceptions::PyRuntimeError::new_err(
+                    format!("Status code {:?} is not a recognised code.", status)))
+        }
+
+        let first_line = format!("{}{}", "HTTP/1.1", status_line).as_bytes();
+
+
+        let _ = asyncio::write_transport(py, &self.transport, b"")?;
+        let _ = asyncio::write_eof_transport(py, &self.transport)?;
+        let _ = asyncio::close_transport(py, &self.transport)?;
+
+        Ok(())
     }
 }
 
