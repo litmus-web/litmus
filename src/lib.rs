@@ -12,7 +12,7 @@ use regex::Regex;
 use once_cell::sync::OnceCell;
 
 
-static URL_REGEX: OnceCell<Vec<Regex>> = OnceCell::new();
+// static URL_REGEX: OnceCell<Vec<Regex>> = OnceCell::new();
 
 const MAX_HEADERS: usize = 32;
 
@@ -26,30 +26,30 @@ struct RustProtocol {
 #[pymethods]
 impl RustProtocol {
     #[new]
-    fn new(py: Python, regex_patterns: Vec<&str>) -> Self {
+    fn new(py: Python, _regex_patterns: Vec<&str>) -> PyResult<Self> {
 
         // get the running event loop from python
         let mut loop_ = asyncio::get_loop(py);
         if loop_.is_err() {
-            return panic!("Cannot get event loop.");
+            return Err(exceptions::PyRuntimeError::new_err("Cannot get event loop."))
         }
 
         // uses the event loop just as a dud object, to get
         // overridden later.
         let dud = asyncio::get_loop(py);
         if dud.is_err() {
-            return panic!("Cannot get event loop.");
+            return Err(exceptions::PyRuntimeError::new_err("Cannot get event loop."))
         }
 
         // Set-up regex on the global scale to help efficiency.
-        let _: &Vec<Regex> = URL_REGEX.get_or_init(|| {
-            utils::make_regex_from_vec(regex_patterns)
-        });
+        //let _: &Vec<Regex> = URL_REGEX.get_or_init(|| {
+        //    utils::make_regex_from_vec(regex_patterns)
+        //});
 
-        RustProtocol{
+        Ok(RustProtocol{
             transport: dud.unwrap(),
             loop_: loop_.unwrap(),
-        }
+        })
     }
 
     /// Called when some data is received.
