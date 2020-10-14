@@ -4,7 +4,7 @@ __all__ = [
     "parse_route",
 ]
 
-_converter_re = re.compile("\{([^}]+):([^}]+)\}", re.VERBOSE)
+_converter_re = re.compile(r"\{([^}]+):([^}]+)\}", re.VERBOSE)
 
 _standard_type_converter = {
     "alpha": r"[A-Za-z]+",

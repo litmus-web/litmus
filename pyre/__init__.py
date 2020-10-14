@@ -5,7 +5,7 @@ from . import helpers
 
 
 # dummy imports to help linting
-from .protocol import *
+
 
 
 # Rust override.
