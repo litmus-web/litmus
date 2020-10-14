@@ -76,13 +76,18 @@ impl RustProtocol {
                 new_headers.insert(header.name.to_string(),  header.value.to_vec());
             }
 
-            let task = RequestResponseCycle::new(
-                method,
-                path,
-                new_headers
-            );
-            let _ = asyncio::create_server_task(py, task);
+            // let task = RequestResponseCycle::new(
+            //    method,
+            //    path,
+            //    new_headers
+            // );
+            // let _ = asyncio::create_server_task(py, task);
 
+            self.start_response(
+                py,
+                200,
+                vec![(b"content-type", b"text/plain"), (b"content-length", b"0")]
+            )?;
         }
 
         Ok(())
@@ -104,10 +109,6 @@ impl RustProtocol {
     /// When the connection is closed, connection_lost() is called.
     fn connection_made(&mut self, py: Python, transport: PyObject) -> PyResult<()>{
         self.transport = transport;
-        // let _ = asyncio::pause_reading_transport(py, &transport);
-
-
-
         Ok(())
     }
 
@@ -149,6 +150,8 @@ impl RustProtocol {
     fn resume_writing(&mut self) {
 
     }
+
+
 }
 
 impl RustProtocol {
@@ -159,19 +162,36 @@ impl RustProtocol {
         headers: Vec<(&[u8], &[u8])>,
     ) -> PyResult<()> {
         let status_line = http::get_status_from_u16(status);
+
+        // Check if its not the default
         if status_line == "" {
             return Err(
                 exceptions::PyRuntimeError::new_err(
                     format!("Status code {:?} is not a recognised code.", status)))
         }
 
-        let first_line ="HTTP/1.1" + status_line + "\r\n";
+        // Main block to be sent
+        let mut parts: Vec<Vec<u8>> = Vec::default();
 
+        // First line containing protocol and Status
+        let first_line = Vec::from(format!("HTTP/1.1 {}", status_line));
+        parts.push(first_line);
 
-        let _ = asyncio::write_transport(py, &self.transport, b"")?;
+        let mut part: Vec<u8>;
+        for (name, value) in headers {
+            part = [name, value].join(": ".as_bytes());
+            parts.push(part);
+        }
+        parts.push(Vec::from("\r\n".as_bytes()));
+
+        let header_block: Vec<u8> = parts.join("\r\n".as_bytes());
+
+        //println!("{:?}", String::from_utf8(header_block).unwrap());
+
+        let _ = asyncio::write_transport(py, &self.transport, header_block.as_ref())?;
         let _ = asyncio::write_eof_transport(py, &self.transport)?;
-        let _ = asyncio::close_transport(py, &self.transport)?;
 
+        // let _ = asyncio::close_transport(py, &self.transport)?;
         Ok(())
     }
 }

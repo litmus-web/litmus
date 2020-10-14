@@ -19,7 +19,7 @@ pub fn write_transport(py: Python, transport: &PyObject, data: &[u8]) -> PyResul
 }
 
 pub fn write_eof_transport(py: Python, transport: &PyObject) -> PyResult<()> {
-    transport.call_method0(py, "write_eof")?;
+    transport.call_method1(py, "write", ("".as_bytes(),))?;
     Ok(())
 }
 
