@@ -15,16 +15,26 @@ use once_cell::sync::OnceCell;
 // static URL_REGEX: OnceCell<Vec<Regex>> = OnceCell::new();
 
 const MAX_HEADERS: usize = 32;
+const HIGH_WATER_LIMIT: usize = 64 * 1024;  // 64KiB
 
 
 struct FlowControl {
     transport: PyObject,
     is_read_paused: bool,
     is_write_paused: bool,
-    wait_for_write: bool,
 }
 
 impl FlowControl {
+    fn default() -> PyResult<Self> {
+        let dud = asyncio::get_loop(py)?;
+
+        Ok(FlowControl {
+            transport: dud,
+            is_read_paused: false,
+            is_write_paused: false,
+        })
+    }
+
     fn pause_reading(&mut self, py: Python) {
         if !self.is_read_paused {
             self.is_read_paused = true;
@@ -42,19 +52,17 @@ impl FlowControl {
     fn pause_writing(&mut self) {
         if !self.is_write_paused {
             self.is_write_paused = true;
-            self.wait_for_write = true;
         }
     }
 
     fn resume_writing(&mut self) {
         if self.is_write_paused {
             self.is_write_paused = false;
-            self.wait_for_write = false;
         }
     }
 
     fn can_write(&mut self) -> bool {
-        !self.wait_for_write
+        !self.is_write_paused
     }
 }
 
@@ -62,7 +70,9 @@ impl FlowControl {
 #[pyclass]
 struct RustProtocol {
     transport: PyObject,
-    loop_: PyObject,
+
+    fc: FlowControl,
+
 }
 
 #[pymethods]
@@ -70,18 +80,9 @@ impl RustProtocol {
     #[new]
     fn new(py: Python, _regex_patterns: Vec<&str>) -> PyResult<Self> {
 
-        // get the running event loop from python
-        let mut loop_ = asyncio::get_loop(py);
-        if loop_.is_err() {
-            return Err(exceptions::PyRuntimeError::new_err("Cannot get event loop."))
-        }
-
         // uses the event loop just as a dud object, to get
         // overridden later.
-        let dud = asyncio::get_loop(py);
-        if dud.is_err() {
-            return Err(exceptions::PyRuntimeError::new_err("Cannot get event loop."))
-        }
+        let dud = asyncio::get_loop(py)?;
 
         // Set-up regex on the global scale to help efficiency.
         //let _: &Vec<Regex> = URL_REGEX.get_or_init(|| {
@@ -89,8 +90,9 @@ impl RustProtocol {
         //});
 
         Ok(RustProtocol{
-            transport: dud.unwrap(),
-            loop_: loop_.unwrap(),
+            transport: dud,
+            fc: FlowControl::default()?,
+
         })
     }
 
@@ -102,7 +104,7 @@ impl RustProtocol {
         let mut req = httparse::Request::new(&mut headers);
         let result = req.parse(data);
         let res = match result {
-            Ok(r) => r,
+            Ok(r) => r, // todo work out what that usize is
             Err(e) => {
                 return Err(exceptions::PyRuntimeError::new_err(format!("{}", e.to_string())))
                 // todo handle as a response instead
@@ -183,14 +185,14 @@ impl RustProtocol {
     /// effect when it's most needed (when the app keeps writing
     /// without yielding until pause_writing() is called).
     fn pause_writing(&mut self) {
-
+        self.fc.pause_writing()
     }
 
     /// Called when the transport's buffer drains below the low-water mark.
     ///
     ///  See pause_writing() for details.
     fn resume_writing(&mut self) {
-
+        self.fc.resume_writing()
     }
 
 
