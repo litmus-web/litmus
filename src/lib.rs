@@ -1,6 +1,7 @@
 mod utils;
 mod asyncio;
 mod http;
+mod framework;
 
 use pyo3::prelude::*;
 use pyo3::{exceptions, PyAsyncProtocol, PyIterProtocol};
@@ -8,11 +9,6 @@ use pyo3::iter::IterNextOutput;
 
 use std::collections::HashMap;
 
-use regex::Regex;
-use once_cell::sync::OnceCell;
-
-
-// static URL_REGEX: OnceCell<Vec<Regex>> = OnceCell::new();
 
 const MAX_HEADERS: usize = 32;
 const HIGH_WATER_LIMIT: usize = 64 * 1024;  // 64KiB
@@ -86,7 +82,7 @@ struct RustProtocol {
 #[pymethods]
 impl RustProtocol {
     #[new]
-    fn new(py: Python, _regex_patterns: Vec<&str>) -> PyResult<Self> {
+    fn new(py: Python) -> PyResult<Self> {
 
         // uses the event loop just as a dud object, to get
         // overridden later.
