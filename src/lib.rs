@@ -25,12 +25,36 @@ struct FlowControl {
 }
 
 impl FlowControl {
-    fn pause_reading(&mut self, py: Python) -> PyResult<()> {
+    fn pause_reading(&mut self, py: Python) {
         if !self.is_read_paused {
             self.is_read_paused = true;
-            self.transport.call_method0(py, "pause_reading")?;
+            self.transport.call_method0(py, "pause_reading");
         }
-        Ok(())
+    }
+
+    fn resume_reading(&mut self, py: Python) {
+        if self.is_read_paused {
+            self.is_read_paused = false;
+            let _ = self.transport.call_method0(py, "resume_reading");
+        }
+    }
+
+    fn pause_writing(&mut self) {
+        if !self.is_write_paused {
+            self.is_write_paused = true;
+            self.wait_for_write = true;
+        }
+    }
+
+    fn resume_writing(&mut self) {
+        if self.is_write_paused {
+            self.is_write_paused = false;
+            self.wait_for_write = false;
+        }
+    }
+
+    fn can_write(&mut self) -> bool {
+        !self.wait_for_write
     }
 }
 
