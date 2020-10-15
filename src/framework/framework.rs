@@ -16,6 +16,8 @@ fn framework_init(
     let _: &Vec<(Regex, PyObject)> = URL_REGEX.get_or_init(|| {
         utils::make_regex_from_vec(regex_patterns)
     });
+
+    Ok(())
 }
 
 

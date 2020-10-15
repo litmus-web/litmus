@@ -1,15 +1,10 @@
 use pyo3::prelude::*;
-use once_cell::sync::OnceCell;
 
 use crate::RequestResponseCycle;
 
-
-static ASYNCIO: OnceCell<&PyModule> = OnceCell::new();
-
-
 pub fn get_loop(py: Python) -> PyResult<PyObject> {
-    let module = py.import("asyncio")?.into_py(py);     // todo can we save importing this?
-    Ok(module.call_method0(py, "get_event_loop")?.into_py(py))
+    let module = py.import("asyncio")?;
+    Ok(module.call_method0( "get_event_loop")?.into_py(py))
 }
 
 pub fn create_server_task(py: Python, task: RequestResponseCycle) -> PyResult<()> {

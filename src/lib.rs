@@ -29,7 +29,7 @@ impl FlowControl {
         }
     }
 
-    fn default() -> PyResult<Self> {
+    fn default(py: Python) -> PyResult<Self> {
         let dud = asyncio::get_loop(py)?;
 
         Ok(FlowControl {
@@ -39,18 +39,20 @@ impl FlowControl {
         })
     }
 
-    fn pause_reading(&mut self, py: Python) {
+    fn pause_reading(&mut self, py: Python) -> PyResult<()> {
         if !self.is_read_paused {
             self.is_read_paused = true;
-            self.transport.call_method0(py, "pause_reading");
+            self.transport.call_method0(py, "pause_reading")?;
         }
+        OK(())
     }
 
-    fn resume_reading(&mut self, py: Python) {
+    fn resume_reading(&mut self, py: Python) -> PyResult<()> {
         if self.is_read_paused {
             self.is_read_paused = false;
-            let _ = self.transport.call_method0(py, "resume_reading");
+            self.transport.call_method0(py, "resume_reading")?;
         }
+        OK(())
     }
 
     fn pause_writing(&mut self) {
@@ -89,7 +91,7 @@ impl RustProtocol {
 
         Ok(RustProtocol{
             transport: dud,
-            fc: FlowControl::default()?,
+            fc: FlowControl::default(py)?,
 
         })
     }
@@ -121,15 +123,10 @@ impl RustProtocol {
             let task = RequestResponseCycle::new(
                 method,
                 path,
-                new_headers
+                new_headers,
+                self.transport.clone(),
             );
             let _ = asyncio::create_server_task(py, task);
-
-            self.start_response(
-                py,
-                200,
-                vec![(b"content-type", b"text/plain"), (b"content-length", b"0")]
-            )?;
         }
 
         Ok(())
