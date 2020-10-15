@@ -203,7 +203,7 @@ impl RustProtocol {
 
 }
 
-/// Area used for handling the writing to the socket.
+/// Area used for handling the writing to the socket with the ASGI setup.
 /// contains:
 ///     - start_response()
 ///     - send_body()
