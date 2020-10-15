@@ -8,9 +8,10 @@ pub fn get_loop(py: Python) -> PyResult<PyObject> {
     Ok(module.call_method0("get_event_loop")?.into_py(py))
 }
 
-pub fn create_server_task(py: Python, task: RequestResponseCycle) -> PyResult<PyObject> {
+pub fn create_server_task(py: Python, task: RequestResponseCycle) -> PyResult<()> {
     let module = py.import("asyncio")?;
-    Ok(module.call_method1("ensure_future", (task,))?.into_py(py))
+    let _ = module.call_method1("ensure_future", (task,))?;
+    Ok(())
 }
 
 pub fn write_transport(py: Python, transport: &PyObject, data: &[u8]) -> PyResult<()> {

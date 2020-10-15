@@ -17,6 +17,24 @@ use once_cell::sync::OnceCell;
 const MAX_HEADERS: usize = 32;
 
 
+struct FlowControl {
+    transport: PyObject,
+    is_read_paused: bool,
+    is_write_paused: bool,
+    wait_for_write: bool,
+}
+
+impl FlowControl {
+    fn pause_reading(&mut self, py: Python) -> PyResult<()> {
+        if !self.is_read_paused {
+            self.is_read_paused = true;
+            self.transport.call_method0(py, "pause_reading")?;
+        }
+        Ok(())
+    }
+}
+
+
 #[pyclass]
 struct RustProtocol {
     transport: PyObject,
@@ -154,7 +172,24 @@ impl RustProtocol {
 
 }
 
+/// Area used for handling the writing to the socket.
+/// contains:
+///     - start_response()
+///     - send_body()
+///     - send_end()
+///
 impl RustProtocol {
+
+    /// start response is used for handling writing the status code and
+    /// related headers, similar to the ASGI response.start system.
+    ///
+    /// If the status is not a valid code as described in http::get_status...
+    /// the system will return '' as a &str, otherwise it will return the HTTP
+    /// status line e.g 200 -> 200 OK
+    ///
+    /// Headers should follow the lines of the ASGI system taking a vector (python list)
+    /// containing a tuple of byte strings.
+    ///
     fn start_response(
         &mut self,
         py: Python,
@@ -186,12 +221,18 @@ impl RustProtocol {
 
         let header_block: Vec<u8> = parts.join("\r\n".as_bytes());
 
-        //println!("{:?}", String::from_utf8(header_block).unwrap());
-
         let _ = asyncio::write_transport(py, &self.transport, header_block.as_ref())?;
-        let _ = asyncio::write_eof_transport(py, &self.transport)?;
 
         Ok(())
+    }
+
+    fn send_body(&mut self, py: Python, body: &[u8]) -> PyResult<()> {
+        Ok(asyncio::write_transport(py, &self.transport, body)?)
+    }
+
+
+    fn send_end(&mut self, py: Python) -> PyResult<()> {
+        Ok(asyncio::write_eof_transport(py, &self.transport)?)
     }
 }
 

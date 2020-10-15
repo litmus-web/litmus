@@ -1,5 +1,3 @@
-use once_cell::sync::OnceCell;
-
 // 1xx codes
 static STATUS_100: &str = "100 Continue";
 static STATUS_101: &str = "101 Switching Protocol";
