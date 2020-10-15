@@ -25,6 +25,14 @@ struct FlowControl {
 }
 
 impl FlowControl {
+    fn new(transport: PyObject) -> Self {
+        FlowControl {
+            transport,
+            is_read_paused: false,
+            is_write_paused: false,
+        }
+    }
+
     fn default() -> PyResult<Self> {
         let dud = asyncio::get_loop(py)?;
 
@@ -152,7 +160,8 @@ impl RustProtocol {
     /// To receive data, wait for data_received() calls.
     /// When the connection is closed, connection_lost() is called.
     fn connection_made(&mut self, py: Python, transport: PyObject) -> PyResult<()>{
-        self.transport = transport;
+        self.transport = transport.clone();
+        self.fc = FlowControl::new(transport);
         Ok(())
     }
 
