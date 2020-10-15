@@ -44,7 +44,7 @@ impl FlowControl {
             self.is_read_paused = true;
             self.transport.call_method0(py, "pause_reading")?;
         }
-        OK(())
+        Ok(())
     }
 
     fn resume_reading(&mut self, py: Python) -> PyResult<()> {
@@ -52,7 +52,7 @@ impl FlowControl {
             self.is_read_paused = false;
             self.transport.call_method0(py, "resume_reading")?;
         }
-        OK(())
+        Ok(())
     }
 
     fn pause_writing(&mut self) {
@@ -103,10 +103,16 @@ impl RustProtocol {
         let mut headers = [httparse::EMPTY_HEADER; MAX_HEADERS];
         let mut req = httparse::Request::new(&mut headers);
         let result = req.parse(data);
-        let res = match result {
-            Ok(r) => r, // todo work out what that usize is
+        let (res, body) = match result {
+            Ok(r) => {
+                let length_to_split = r.unwrap();
+                let body = data.split_at(length_to_split).1;
+                (r, body)
+            }, // todo work out what that usize is
             Err(e) => {
-                return Err(exceptions::PyRuntimeError::new_err(format!("{}", e.to_string())))
+                return Err(
+                    exceptions::PyRuntimeError::new_err(format!("{}", e.to_string()))
+                )
                 // todo handle as a response instead
             }
         };
