@@ -83,15 +83,9 @@ struct RustProtocol {
 impl RustProtocol {
     #[new]
     fn new(py: Python) -> PyResult<Self> {
-
         // uses the event loop just as a dud object, to get
         // overridden later.
         let dud = asyncio::get_loop(py)?;
-
-        // Set-up regex on the global scale to help efficiency.
-        //let _: &Vec<Regex> = URL_REGEX.get_or_init(|| {
-        //    utils::make_regex_from_vec(regex_patterns)
-        //});
 
         Ok(RustProtocol{
             transport: dud,
@@ -203,13 +197,46 @@ impl RustProtocol {
 
 }
 
+
+
+
+
+#[pyclass]
+pub struct RequestResponseCycle {
+    method: String,
+    path: String,
+    headers: HashMap<String, Vec<u8>>,
+
+    transport: PyObject,
+
+}
+
+#[pymethods]
+impl RequestResponseCycle {
+    #[new]
+    fn new(
+        method: String,
+        path: String,
+        headers: HashMap<String, Vec<u8>>,
+        transport: PyObject,
+    ) -> Self {
+        RequestResponseCycle {
+            method,
+            path,
+            headers,
+
+            transport,
+        }
+    }
+}
+
 /// Area used for handling the writing to the socket with the ASGI setup.
 /// contains:
 ///     - start_response()
 ///     - send_body()
 ///     - send_end()
 ///
-impl RustProtocol {
+impl RequestResponseCycle {
 
     /// start response is used for handling writing the status code and
     /// related headers, similar to the ASGI response.start system.
@@ -264,31 +291,6 @@ impl RustProtocol {
 
     fn send_end(&mut self, py: Python) -> PyResult<()> {
         Ok(asyncio::write_eof_transport(py, &self.transport)?)
-    }
-}
-
-
-
-#[pyclass]
-pub struct RequestResponseCycle {
-    method: String,
-    path: String,
-    headers: HashMap<String, Vec<u8>>
-}
-
-#[pymethods]
-impl RequestResponseCycle {
-    #[new]
-    fn new(
-        method: String,
-        path: String,
-        headers: HashMap<String, Vec<u8>>,
-    ) -> Self {
-        RequestResponseCycle {
-            method,
-            path,
-            headers
-        }
     }
 }
 
