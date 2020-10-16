@@ -8,6 +8,7 @@ use pyo3::{exceptions, PyAsyncProtocol, PyIterProtocol};
 use pyo3::iter::IterNextOutput;
 
 use std::collections::HashMap;
+use std::rc::Rc;
 
 
 const MAX_HEADERS: usize = 32;
@@ -15,7 +16,7 @@ const HIGH_WATER_LIMIT: usize = 64 * 1024;  // 64KiB
 
 
 struct FlowControl {
-    transport: PyObject,  // todo pyAny not safe
+    transport: PyObject,
     is_read_paused: bool,
     is_write_paused: bool,
 }
@@ -195,7 +196,7 @@ impl RustProtocol {
 
     /// Called when the transport's buffer drains below the low-water mark.
     ///
-    ///  See pause_writing() for details.
+    /// See pause_writing() for details.
     fn resume_writing(&mut self) {
         if self.fc.is_some() {
             self.fc
@@ -203,7 +204,6 @@ impl RustProtocol {
                 .unwrap()
                 .resume_writing()
         }
-
     }
 
 }
