@@ -13,14 +13,16 @@ use std::collections::HashMap;
 const MAX_HEADERS: usize = 32;
 const HIGH_WATER_LIMIT: usize = 64 * 1024;  // 64KiB
 
-
+#[pyclass]
 struct FlowControl {
     transport: &'static PyAny,
     is_read_paused: bool,
     is_write_paused: bool,
 }
 
+#[pymethods]
 impl FlowControl {
+    #[new]
     fn new(transport: &PyAny) -> Self {
         FlowControl {
             transport,
