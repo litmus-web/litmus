@@ -15,28 +15,18 @@ const HIGH_WATER_LIMIT: usize = 64 * 1024;  // 64KiB
 
 
 struct FlowControl {
-    transport: PyObject,
+    transport: &'static PyObject,
     is_read_paused: bool,
     is_write_paused: bool,
 }
 
 impl FlowControl {
-    fn new(transport: PyObject) -> Self {
+    fn new(transport: &'static PyObject) -> Self {
         FlowControl {
             transport,
             is_read_paused: false,
             is_write_paused: false,
         }
-    }
-
-    fn default(py: Python) -> PyResult<Self> {
-        let dud = asyncio::get_loop(py)?;
-
-        Ok(FlowControl {
-            transport: dud,
-            is_read_paused: false,
-            is_write_paused: false,
-        })
     }
 
     fn pause_reading(&mut self, py: Python) -> PyResult<()> {
@@ -75,9 +65,9 @@ impl FlowControl {
 
 #[pyclass]
 struct RustProtocol {
-    transport: PyObject,
+    transport: Option<&'static PyObject>,
 
-    fc: FlowControl,
+    fc:  Option<FlowControl>,
 
 }
 
@@ -85,13 +75,9 @@ struct RustProtocol {
 impl RustProtocol {
     #[new]
     fn new(py: Python) -> PyResult<Self> {
-        // uses the event loop just as a dud object, to get
-        // overridden later.
-        let dud = asyncio::get_loop(py)?;
-
         Ok(RustProtocol{
-            transport: dud,
-            fc: FlowControl::default(py)?,
+            transport: None,
+            fc: None,
 
         })
     }
@@ -126,13 +112,24 @@ impl RustProtocol {
                 new_headers.insert(header.name.to_string(),  header.value.to_vec());
             }
 
-            let task = RequestResponseCycle::new(
-                method,
-                path,
-                new_headers,
-                self.transport.clone(),
-            );
-            let _ = asyncio::create_server_task(py, task);
+            // This is just a edge case catch, transport should never be None by the time
+            // any data is received however we still want to be certain.
+            if self.transport.is_some() {
+                let task = RequestResponseCycle::new(
+                    method,
+                    path,
+                    new_headers,
+                    self.transport.unwrap().clone(),
+                );
+                let _ = asyncio::create_server_task(py, task);
+            } else {
+                return Err(
+                    exceptions::PyRuntimeError::new_err(
+                        "Transport was None type upon complete response parsing")
+                )
+            }
+
+
         }
 
         Ok(())
@@ -153,8 +150,8 @@ impl RustProtocol {
     /// To receive data, wait for data_received() calls.
     /// When the connection is closed, connection_lost() is called.
     fn connection_made(&mut self, py: Python, transport: PyObject) -> PyResult<()>{
-        self.transport = transport.clone();
-        self.fc = FlowControl::new(transport);
+        self.fc = Some(FlowControl::new(&transport));
+        self.transport = Some(&transport);
         Ok(())
     }
 

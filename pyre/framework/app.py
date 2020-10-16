@@ -1,4 +1,5 @@
 import typing as t
+import asyncio
 
 
 class WebApplication:
