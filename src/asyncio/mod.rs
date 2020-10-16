@@ -13,10 +13,10 @@ pub fn get_loop(py: Python) -> PyResult<PyObject> {
 }
 
 // Task helpers
-pub fn create_server_task(py: Python, task: RequestResponseCycle) -> PyResult<()> {
+pub fn create_server_task(py: Python, task: RequestResponseCycle) -> PyResult<&PyAny> {
     let module = py.import("asyncio")?;
-    let _ = module.call_method1("ensure_future", (task,))?;
-    Ok(())
+    let future = module.call_method1("ensure_future", (task,))?;
+    Ok(future)
 }
 
 // Protocol Transport Helpers

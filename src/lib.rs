@@ -121,7 +121,7 @@ impl RustProtocol {
                     new_headers,
                     self.transport.as_ref().unwrap().clone(),
                 );
-                let _ = asyncio::create_server_task(py, task);
+                let _ = asyncio::create_server_task(py, task)?;
             } else {
                 return Err(
                     exceptions::PyRuntimeError::new_err(
