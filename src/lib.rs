@@ -8,7 +8,7 @@ use pyo3::{exceptions, PyAsyncProtocol, PyIterProtocol};
 use pyo3::iter::IterNextOutput;
 
 use std::collections::HashMap;
-use std::rc::Rc;
+use std::sync::Arc;
 
 
 const MAX_HEADERS: usize = 32;
@@ -16,13 +16,13 @@ const HIGH_WATER_LIMIT: usize = 64 * 1024;  // 64KiB
 
 
 struct FlowControl {
-    transport: PyObject,
+    transport: Arc<PyObject>,
     is_read_paused: bool,
     is_write_paused: bool,
 }
 
 impl FlowControl {
-    fn new(transport: PyObject) -> Self {
+    fn new(transport: Arc<PyObject>) -> Self {
         FlowControl {
             transport,
             is_read_paused: false,
@@ -66,7 +66,7 @@ impl FlowControl {
 
 #[pyclass]
 struct RustProtocol {
-    transport: Option<PyObject>,
+    transport: Option<Arc<PyObject>>,
 
     fc:  Option<FlowControl>,
 
@@ -151,8 +151,7 @@ impl RustProtocol {
     /// To receive data, wait for data_received() calls.
     /// When the connection is closed, connection_lost() is called.
     fn connection_made(&mut self, py: Python, transport: PyObject) -> PyResult<()>{
-        // todo verify refernce counter
-        let transport = Rc::new(transport);
+        let transport: Arc<PyObject> = Arc::new(transport);
         self.fc = Some(FlowControl::new(transport.clone()));
         self.transport = Some(transport);
         Ok(())
@@ -161,7 +160,7 @@ impl RustProtocol {
     /// Called when the connection is lost or closed.
     ///
     /// The argument is an exception object or None (the latter
-    /// meaning a regular EOF is received or the connection was
+    /// meaning a regular EOF is received or the connection was lol*
     /// aborted or closed).
     fn connection_lost(&mut self, exc: PyObject) {
 
