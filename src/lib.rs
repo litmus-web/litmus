@@ -4,7 +4,7 @@ mod http;
 mod framework;
 
 use pyo3::prelude::*;
-use pyo3::{exceptions, PyAsyncProtocol, PyIterProtocol, AsPyPointer};
+use pyo3::{exceptions, PyAsyncProtocol, PyIterProtocol};
 use pyo3::iter::IterNextOutput;
 
 use std::collections::HashMap;
