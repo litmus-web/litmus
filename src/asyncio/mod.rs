@@ -2,9 +2,10 @@ use pyo3::prelude::*;
 
 use crate::RequestResponseCycle;
 
+
 pub fn get_loop(py: Python) -> PyResult<PyObject> {
     let module = py.import("asyncio")?;
-    Ok(module.call_method0( "get_event_loop")?.into_py(py))
+    Ok(module.call_method0("get_event_loop")?.into_py(py))
 }
 
 pub fn create_server_task(py: Python, task: RequestResponseCycle) -> PyResult<()> {
