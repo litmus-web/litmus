@@ -8,7 +8,7 @@ use once_cell::sync::OnceCell;
 
 use crate::asyncio;
 use crate::protocol;
-
+use pyo3::types::PyDict;
 
 
 const HIGH_WATER_LIMIT: usize = 64 * 1024;  // 64KiB
@@ -81,5 +81,56 @@ impl PyAsyncProtocol for RequestResponseCycle {
 
 
         Ok(())
+    }
+}
+
+/// ASGISend is the the 'send' coroutine of standard ASGI
+/// servers, this is implemented as a class because it has to be
+/// a coroutine object.
+#[pyclass]
+struct ASGISend {
+    transport: Arc<PyObject>,
+    fc: Arc<protocol::FlowControl>,
+}
+
+impl ASGISend {
+    fn new(transport: Arc<PyObject>, fc: Arc<protocol::FlowControl>) -> Self {
+        ASGISend{
+            transport,
+            fc,
+        }
+    }
+}
+
+#[pymethods]
+impl ASGISend {
+    #[call]
+    fn __call__(&mut self, data: PyDict) {
+        data.get_item("");
+        self
+    }
+}
+
+
+#[pyclass]
+struct ASGIReceive {
+    transport: Arc<PyObject>,
+    fc: Arc<protocol::FlowControl>,
+}
+
+impl ASGIReceive {
+    fn new(transport: Arc<PyObject>, fc: Arc<protocol::FlowControl>) -> Self {
+        ASGIReceive{
+            transport,
+            fc,
+        }
+    }
+}
+
+#[pymethods]
+impl ASGIReceive {
+    #[call]
+    fn __call__(&mut self, data: PyDict) {
+        data.get_item("");
     }
 }
