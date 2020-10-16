@@ -15,7 +15,7 @@ const HIGH_WATER_LIMIT: usize = 64 * 1024;  // 64KiB
 
 #[pyclass]
 struct FlowControl {
-    transport: &'static PyAny,
+    transport: &'static PyObject,  // todo pyAny not safe
     is_read_paused: bool,
     is_write_paused: bool,
 }
@@ -23,7 +23,7 @@ struct FlowControl {
 #[pymethods]
 impl FlowControl {
     #[new]
-    fn new(transport: &PyAny) -> Self {
+    fn new(transport: &PyObject) -> Self {
         FlowControl {
             transport,
             is_read_paused: false,
@@ -31,18 +31,18 @@ impl FlowControl {
         }
     }
 
-    fn pause_reading(&mut self) -> PyResult<()> {
+    fn pause_reading(&mut self, py: PyObject) -> PyResult<()> {
         if !self.is_read_paused {
             self.is_read_paused = true;
-            self.transport.call_method0("pause_reading")?;
+            self.transport.call_method0(py,"pause_reading")?;
         }
         Ok(())
     }
 
-    fn resume_reading(&mut self) -> PyResult<()> {
+    fn resume_reading(&mut self, py: PyObject) -> PyResult<()> {
         if self.is_read_paused {
             self.is_read_paused = false;
-            self.transport.call_method0("resume_reading")?;
+            self.transport.call_method0(py,"resume_reading")?;
         }
         Ok(())
     }
@@ -152,8 +152,8 @@ impl RustProtocol {
     /// To receive data, wait for data_received() calls.
     /// When the connection is closed, connection_lost() is called.
     fn connection_made(&mut self, py: Python, transport: PyObject) -> PyResult<()>{
-        self.fc = Some(FlowControl::new(transport.as_ref(py)));
-        self.transport.get_or_insert(transport);
+        self.fc = Some(FlowControl::new(&transport));
+        self.transport = Some(transport);
         Ok(())
     }
 
