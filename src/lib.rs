@@ -15,13 +15,13 @@ const HIGH_WATER_LIMIT: usize = 64 * 1024;  // 64KiB
 
 
 struct FlowControl {
-    transport: &'static PyObject,  // todo pyAny not safe
+    transport: PyObject,  // todo pyAny not safe
     is_read_paused: bool,
     is_write_paused: bool,
 }
 
 impl FlowControl {
-    fn new(transport: &'static PyObject) -> Self {
+    fn new(transport: PyObject) -> Self {
         FlowControl {
             transport,
             is_read_paused: false,
@@ -94,7 +94,7 @@ impl RustProtocol {
                 let length_to_split = r.unwrap();
                 let body = data.split_at(length_to_split).1;
                 (r, body)
-            }, // todo work out what that usize is
+            },
             Err(e) => {
                 return Err(
                     exceptions::PyRuntimeError::new_err(format!("{}", e.to_string()))
@@ -150,7 +150,7 @@ impl RustProtocol {
     /// To receive data, wait for data_received() calls.
     /// When the connection is closed, connection_lost() is called.
     fn connection_made(&mut self, py: Python, transport: PyObject) -> PyResult<()>{
-        self.fc = Some(FlowControl::new(&transport));
+        self.fc = Some(FlowControl::new(transport.clone()));
         self.transport = Some(transport);
         Ok(())
     }
@@ -184,24 +184,26 @@ impl RustProtocol {
     /// effect when it's most needed (when the app keeps writing
     /// without yielding until pause_writing() is called).
     fn pause_writing(&mut self) {
-        match &self.fc {
-            Some(mut fc) => {
-                fc.pause_writing()
-            }
-            _ => {}
+        if self.fc.is_some() {
+            self.fc
+                .as_ref()
+                .unwrap()
+                .pause_writing()
         }
+
     }
 
     /// Called when the transport's buffer drains below the low-water mark.
     ///
     ///  See pause_writing() for details.
     fn resume_writing(&mut self) {
-        match &self.fc {
-            Some(mut fc) => {
-                fc.resume_writing()
-            }
-            _ => {}
+        if self.fc.is_some() {
+            self.fc
+                .as_ref()
+                .unwrap()
+                .resume_writing()
         }
+
     }
 
 }
