@@ -84,13 +84,24 @@ impl RustProtocol {
         })
     }
 
-    /// Called when some data is received.
+    /// Called when some data is received by the asyncio server,
+    /// in python this would be a bytes object the equivelant in Rust
+    /// being a `&[u8]` type.
     ///
-    /// The argument is a bytes object.
+    /// This is what parses any data that it recieves, MAX_HEADERS determins what the server
+    /// will and will not reject or accept.
+    ///
+    /// TODO:
+    ///     - Handling of ToManyHeaders still needs to be returned as a response
+    ///       not a simple raise, otherwise this leaves us vunrable to annoying
+    ///       attacks by bots and users.
+    ///
+    ///
     fn data_received(&mut self, py: Python, data: &[u8]) -> PyResult<()> {
         let mut headers = [httparse::EMPTY_HEADER; MAX_HEADERS];
         let mut req = httparse::Request::new(&mut headers);
         let result = req.parse(data);
+
         let (res, body) = match result {
             Ok(r) => {
                 let length_to_split = r.unwrap();
@@ -142,9 +153,7 @@ impl RustProtocol {
     /// If this returns a false value (including None), the transport
     /// will close itself.  If it returns a true value, closing the
     /// transport is up to the protocol.
-    fn eof_received(&mut self) {
-
-    }
+    fn eof_received(&mut self) {  }
 
     /// Called when a connection is made.
     ///
@@ -182,10 +191,11 @@ impl RustProtocol {
     /// are important to ensure that things go as expected when either
     /// mark is zero.
     ///
-    /// NOTE: This is the only Protocol callback that is not called
-    /// through EventLoop.call_soon() -- if it were, it would have no
-    /// effect when it's most needed (when the app keeps writing
-    /// without yielding until pause_writing() is called).
+    /// NOTE:
+    ///     - This is the only Protocol callback that is not called
+    ///       through EventLoop.call_soon() -- if it were, it would have no
+    ///       effect when it's most needed (when the app keeps writing
+    ///       without yielding until pause_writing() is called).
     fn pause_writing(&mut self) {
         if self.fc.is_some() {
             self.fc
@@ -241,67 +251,22 @@ impl RequestResponseCycle {
     }
 }
 
-/// Area used for handling the writing to the socket with the ASGI setup.
-/// contains:
-///     - start_response()
-///     - send_body()
-///     - send_end()
-///
+
 impl RequestResponseCycle {
-
-    /// start response is used for handling writing the status code and
-    /// related headers, similar to the ASGI response.start system.
-    ///
-    /// If the status is not a valid code as described in http::get_status...
-    /// the system will return '' as a &str, otherwise it will return the HTTP
-    /// status line e.g 200 -> 200 OK
-    ///
-    /// Headers should follow the lines of the ASGI system taking a vector (python list)
-    /// containing a tuple of byte strings.
-    ///
-    fn start_response(
-        &mut self,
-        py: Python,
-        status: u16,
-        headers: Vec<(&[u8], &[u8])>,
-    ) -> PyResult<()> {
-        let status_line = http::get_status_from_u16(status);
-
-        // Check if its not the default
-        if status_line == "" {
-            return Err(
-                exceptions::PyRuntimeError::new_err(
-                    format!("Status code {:?} is not a recognised code.", status)))
-        }
-
-        // Main block to be sent
-        let mut parts: Vec<Vec<u8>> = Vec::default();
-
-        // First line containing protocol and Status
-        let first_line = Vec::from(format!("HTTP/1.1 {}", status_line));
-        parts.push(first_line);
-
-        let mut part: Vec<u8>;
-        for (name, value) in headers {
-            part = [name, value].join(": ".as_bytes());
-            parts.push(part);
-        }
-        parts.push(Vec::from("\r\n".as_bytes()));
-
-        let header_block: Vec<u8> = parts.join("\r\n".as_bytes());
-
-        let _ = asyncio::write_transport(py, &self.transport, header_block.as_ref())?;
-
-        Ok(())
-    }
-
     fn send_body(&mut self, py: Python, body: &[u8]) -> PyResult<()> {
-        Ok(asyncio::write_transport(py, self.transport.borrow(), body)?)
+        Ok(asyncio::write_transport(
+            py,
+            self.transport.borrow(),
+            body,
+        )?)
     }
 
 
     fn send_end(&mut self, py: Python) -> PyResult<()> {
-        Ok(asyncio::write_eof_transport(py, self.transport.borrow())?)
+        Ok(asyncio::write_eof_transport(
+            py,
+            self.transport.borrow(),
+        )?)
     }
 }
 

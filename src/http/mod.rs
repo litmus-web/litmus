@@ -1,3 +1,6 @@
+use pyo3::prelude::*;
+use pyo3::{exceptions, PyAsyncProtocol, PyIterProtocol};
+
 // 1xx codes
 static STATUS_100: &str = "100 Continue";
 static STATUS_101: &str = "101 Switching Protocol";
@@ -72,7 +75,7 @@ static STATUS_511: &str = "511 Network Authentication Required";
 static STATUS_UNKNOWN: &str = "";
 
 
-pub fn get_status_from_u16(status: u16) -> &'static str {
+fn get_status_from_u16(status: u16) -> &'static str {
     return match status {
         // 1xx codes
         100 => STATUS_100,
@@ -147,4 +150,58 @@ pub fn get_status_from_u16(status: u16) -> &'static str {
         // Default
         _ => STATUS_UNKNOWN,
     }
+}
+
+/// The formatter turns a standard u16 status code and vector of bytestrings to a
+/// applicable HTTP response bytestring.
+///
+/// The formatter is naive about the state of headers, all headers are anticipated to be
+/// in the correct format already e.g lower-case and white space joined replaced with a `-`
+/// for the header name.
+///
+/// Example:
+/// ```
+/// let status: u16 = 200;
+/// let headers: Vec<(&[u8), &[u8])> = vec![
+///     (b"hello", b"world"),
+/// ];
+///
+/// let response: PyResult<Vec<u8>> = format_response_start(status, headers);
+///
+/// if response.is_ok() {
+///     println!("Response Start:\n\n{:?}", response.unwrap().as_ref());
+/// }
+/// ```
+pub fn format_response_start(
+    status: u16,
+    headers: Vec<(&[u8], &[u8])>,
+) -> PyResult<Vec<u8>> {
+    let status_line = get_status_from_u16(status);
+
+    // Check if its not the default
+    if status_line == "" {
+        return Err(
+            exceptions::PyRuntimeError::new_err(
+                format!("Status code {:?} is not a recognised code.", status)))
+    }
+
+    // Used to construct the header block with join()
+    let mut parts: Vec<Vec<u8>> = Vec::default();
+
+    // First line containing protocol and Status
+    let first_line = Vec::from(format!("HTTP/1.1 {}", status_line));
+    parts.push(first_line);
+
+    let mut part: Vec<u8>;
+    let sep = ": ".as_bytes();
+    for (name, value) in headers {
+        part = [name, value].join(sep);
+        parts.push(part);
+    }
+
+    let newline_return = "\r\n".as_bytes();
+    parts.push(Vec::from(newline_return));
+    let header_block: Vec<u8> = parts.join(newline_return);
+
+    Ok(header_block)
 }
