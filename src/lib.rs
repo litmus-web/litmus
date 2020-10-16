@@ -186,7 +186,7 @@ impl RustProtocol {
     fn pause_writing(&mut self) {
         if self.fc.is_some() {
             self.fc
-                .as_ref()
+                .as_mut()
                 .unwrap()
                 .pause_writing()
         }
@@ -199,7 +199,7 @@ impl RustProtocol {
     fn resume_writing(&mut self) {
         if self.fc.is_some() {
             self.fc
-                .as_ref()
+                .as_mut()
                 .unwrap()
                 .resume_writing()
         }
