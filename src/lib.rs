@@ -224,9 +224,7 @@ pub struct RequestResponseCycle {
 
 }
 
-#[pymethods]
 impl RequestResponseCycle {
-    #[new]
     fn new(
         method: String,
         path: String,
@@ -292,7 +290,7 @@ impl RequestResponseCycle {
 
         let header_block: Vec<u8> = parts.join("\r\n".as_bytes());
 
-        let _ = asyncio::write_transport(py, self.transport.borrow(), header_block.as_ref())?;
+        let _ = asyncio::write_transport(py, &self.transport, header_block.as_ref())?;
 
         Ok(())
     }
