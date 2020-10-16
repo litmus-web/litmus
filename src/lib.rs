@@ -13,17 +13,15 @@ use std::collections::HashMap;
 const MAX_HEADERS: usize = 32;
 const HIGH_WATER_LIMIT: usize = 64 * 1024;  // 64KiB
 
-#[pyclass]
+
 struct FlowControl {
     transport: &'static PyObject,  // todo pyAny not safe
     is_read_paused: bool,
     is_write_paused: bool,
 }
 
-#[pymethods]
 impl FlowControl {
-    #[new]
-    fn new(transport: &PyObject) -> Self {
+    fn new(transport: &'static PyObject) -> Self {
         FlowControl {
             transport,
             is_read_paused: false,
@@ -31,7 +29,7 @@ impl FlowControl {
         }
     }
 
-    fn pause_reading(&mut self, py: PyObject) -> PyResult<()> {
+    fn pause_reading(&mut self, py: Python) -> PyResult<()> {
         if !self.is_read_paused {
             self.is_read_paused = true;
             self.transport.call_method0(py,"pause_reading")?;
@@ -39,7 +37,7 @@ impl FlowControl {
         Ok(())
     }
 
-    fn resume_reading(&mut self, py: PyObject) -> PyResult<()> {
+    fn resume_reading(&mut self, py: Python) -> PyResult<()> {
         if self.is_read_paused {
             self.is_read_paused = false;
             self.transport.call_method0(py,"resume_reading")?;
