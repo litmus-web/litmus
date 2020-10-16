@@ -151,6 +151,8 @@ impl RustProtocol {
     /// To receive data, wait for data_received() calls.
     /// When the connection is closed, connection_lost() is called.
     fn connection_made(&mut self, py: Python, transport: PyObject) -> PyResult<()>{
+        // todo verify refernce counter
+        let transport = Rc::new(transport);
         self.fc = Some(FlowControl::new(transport.clone()));
         self.transport = Some(transport);
         Ok(())
