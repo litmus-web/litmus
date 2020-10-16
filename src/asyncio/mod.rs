@@ -4,7 +4,7 @@
 ///
 use pyo3::prelude::*;
 
-use crate::RequestResponseCycle;
+use crate::asgi::RequestResponseCycle;
 
 // Standardised helpers
 pub fn get_loop(py: Python) -> PyResult<PyObject> {
