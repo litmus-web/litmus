@@ -9,6 +9,7 @@ use pyo3::iter::IterNextOutput;
 
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::borrow::Borrow;
 
 
 const MAX_HEADERS: usize = 32;
@@ -219,7 +220,7 @@ pub struct RequestResponseCycle {
     path: String,
     headers: HashMap<String, Vec<u8>>,
 
-    transport: PyObject,
+    transport: Arc<PyObject>,
 
 }
 
@@ -230,7 +231,7 @@ impl RequestResponseCycle {
         method: String,
         path: String,
         headers: HashMap<String, Vec<u8>>,
-        transport: PyObject,
+        transport: Arc<PyObject>,
     ) -> Self {
         RequestResponseCycle {
             method,
@@ -291,18 +292,18 @@ impl RequestResponseCycle {
 
         let header_block: Vec<u8> = parts.join("\r\n".as_bytes());
 
-        let _ = asyncio::write_transport(py, &self.transport, header_block.as_ref())?;
+        let _ = asyncio::write_transport(py, self.transport.borrow(), header_block.as_ref())?;
 
         Ok(())
     }
 
     fn send_body(&mut self, py: Python, body: &[u8]) -> PyResult<()> {
-        Ok(asyncio::write_transport(py, &self.transport, body)?)
+        Ok(asyncio::write_transport(py, self.transport.borrow(), body)?)
     }
 
 
     fn send_end(&mut self, py: Python) -> PyResult<()> {
-        Ok(asyncio::write_eof_transport(py, &self.transport)?)
+        Ok(asyncio::write_eof_transport(py, self.transport.borrow())?)
     }
 }
 
