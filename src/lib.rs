@@ -184,14 +184,19 @@ impl RustProtocol {
     /// effect when it's most needed (when the app keeps writing
     /// without yielding until pause_writing() is called).
     fn pause_writing(&mut self) {
-        self.fc.pause_writing()
+        if self.fc.is_some() {
+            self.fc.unwrap().pause_writing()
+        }
     }
 
     /// Called when the transport's buffer drains below the low-water mark.
     ///
     ///  See pause_writing() for details.
     fn resume_writing(&mut self) {
-        self.fc.resume_writing()
+        if self.fc.is_some() {
+            self.fc.unwrap().resume_writing()
+        }
+
     }
 
 
