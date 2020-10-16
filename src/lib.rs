@@ -65,7 +65,7 @@ impl FlowControl {
 
 #[pyclass]
 struct RustProtocol {
-    transport: Option<&'static PyObject>,
+    transport: Option<PyObject>,
 
     fc:  Option<FlowControl>,
 
@@ -151,7 +151,7 @@ impl RustProtocol {
     /// When the connection is closed, connection_lost() is called.
     fn connection_made(&mut self, py: Python, transport: PyObject) -> PyResult<()>{
         self.fc = Some(FlowControl::new(&transport));
-        self.transport = Some(&transport);
+        self.transport = Some(transport);
         Ok(())
     }
 
@@ -185,7 +185,10 @@ impl RustProtocol {
     /// without yielding until pause_writing() is called).
     fn pause_writing(&mut self) {
         if self.fc.is_some() {
-            self.fc.unwrap().pause_writing()
+            self.fc
+                .as_ref()
+                .expect("Flow control is initialised.")
+                .pause_writing()
         }
     }
 
@@ -194,7 +197,10 @@ impl RustProtocol {
     ///  See pause_writing() for details.
     fn resume_writing(&mut self) {
         if self.fc.is_some() {
-            self.fc.unwrap().resume_writing()
+        self.fc
+            .as_ref()
+            .expect("Flow control is initialised.")
+            .resume_writing()
         }
 
     }
