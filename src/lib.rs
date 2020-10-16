@@ -4,7 +4,7 @@ mod http;
 mod framework;
 
 use pyo3::prelude::*;
-use pyo3::{exceptions, PyAsyncProtocol, PyIterProtocol};
+use pyo3::{exceptions, PyAsyncProtocol, PyIterProtocol, AsPyPointer};
 use pyo3::iter::IterNextOutput;
 
 use std::collections::HashMap;
@@ -15,13 +15,13 @@ const HIGH_WATER_LIMIT: usize = 64 * 1024;  // 64KiB
 
 
 struct FlowControl {
-    transport: &'static PyObject,
+    transport: &'static PyAny,
     is_read_paused: bool,
     is_write_paused: bool,
 }
 
 impl FlowControl {
-    fn new(transport: &'static PyObject) -> Self {
+    fn new(transport: &PyAny) -> Self {
         FlowControl {
             transport,
             is_read_paused: false,
@@ -29,18 +29,18 @@ impl FlowControl {
         }
     }
 
-    fn pause_reading(&mut self, py: Python) -> PyResult<()> {
+    fn pause_reading(&mut self) -> PyResult<()> {
         if !self.is_read_paused {
             self.is_read_paused = true;
-            self.transport.call_method0(py, "pause_reading")?;
+            self.transport.call_method0("pause_reading")?;
         }
         Ok(())
     }
 
-    fn resume_reading(&mut self, py: Python) -> PyResult<()> {
+    fn resume_reading(&mut self) -> PyResult<()> {
         if self.is_read_paused {
             self.is_read_paused = false;
-            self.transport.call_method0(py, "resume_reading")?;
+            self.transport.call_method0("resume_reading")?;
         }
         Ok(())
     }
@@ -119,7 +119,7 @@ impl RustProtocol {
                     method,
                     path,
                     new_headers,
-                    self.transport.unwrap().clone(),
+                    self.transport.as_ref().unwrap().clone(),
                 );
                 let _ = asyncio::create_server_task(py, task);
             } else {
@@ -150,8 +150,8 @@ impl RustProtocol {
     /// To receive data, wait for data_received() calls.
     /// When the connection is closed, connection_lost() is called.
     fn connection_made(&mut self, py: Python, transport: PyObject) -> PyResult<()>{
-        self.fc = Some(FlowControl::new(&transport));
-        self.transport = Some(transport);
+        self.fc = Some(FlowControl::new(transport.as_ref(py)));
+        self.transport.get_or_insert(transport);
         Ok(())
     }
 
@@ -184,11 +184,11 @@ impl RustProtocol {
     /// effect when it's most needed (when the app keeps writing
     /// without yielding until pause_writing() is called).
     fn pause_writing(&mut self) {
-        if self.fc.is_some() {
-            self.fc
-                .as_ref()
-                .expect("Flow control is initialised.")
-                .pause_writing()
+        match &self.fc {
+            Some(mut fc) => {
+                fc.pause_writing()
+            }
+            _ => {}
         }
     }
 
@@ -196,15 +196,13 @@ impl RustProtocol {
     ///
     ///  See pause_writing() for details.
     fn resume_writing(&mut self) {
-        if self.fc.is_some() {
-        self.fc
-            .as_ref()
-            .expect("Flow control is initialised.")
-            .resume_writing()
+        match &self.fc {
+            Some(mut fc) => {
+                fc.resume_writing()
+            }
+            _ => {}
         }
-
     }
-
 
 }
 
