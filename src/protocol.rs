@@ -1,18 +1,9 @@
 use pyo3::prelude::*;
-use pyo3::{
-    exceptions,
-    PyAsyncProtocol,
-    PyIterProtocol,
-    wrap_pyfunction,
-};
-use pyo3::iter::IterNextOutput;
+use pyo3::exceptions;
 
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::cell::RefCell;
-use std::borrow::{Borrow, BorrowMut};
-
-use once_cell::sync::OnceCell;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 
 use crate::asyncio;
@@ -24,49 +15,49 @@ const MAX_HEADERS: usize = 32;
 
 pub struct FlowControl {
     transport: Arc<PyObject>,
-    is_read_paused: bool,
-    is_write_paused: bool,
+    is_read_paused: AtomicBool,
+    is_write_paused: AtomicBool,
 }
 
 impl FlowControl {
     fn new(transport: Arc<PyObject>) -> Self {
         FlowControl {
             transport,
-            is_read_paused: false,
-            is_write_paused: false,
+            is_read_paused: AtomicBool::from(false),
+            is_write_paused: AtomicBool::from(false),
         }
     }
 
-    pub fn pause_reading(&mut self, py: Python) -> PyResult<()> {
-        if !self.is_read_paused {
-            self.is_read_paused = true;
+    pub fn pause_reading(&self, py: Python) -> PyResult<()> {
+        if !self.is_read_paused.load(Ordering::Relaxed) {
+            self.is_read_paused.store(true, Ordering::Relaxed);
             self.transport.call_method0(py,"pause_reading")?;
         }
         Ok(())
     }
 
-    pub fn resume_reading(&mut self, py: Python) -> PyResult<()> {
-        if self.is_read_paused {
-            self.is_read_paused = false;
+    pub fn resume_reading(&self, py: Python) -> PyResult<()> {
+        if self.is_read_paused.load(Ordering::Relaxed) {
+            self.is_read_paused.store(false, Ordering::Relaxed);
             self.transport.call_method0(py,"resume_reading")?;
         }
         Ok(())
     }
 
-    pub fn pause_writing(&mut self) {
-        if !self.is_write_paused {
-            self.is_write_paused = true;
+    pub fn pause_writing(&self) {
+        if !self.is_write_paused.load(Ordering::Relaxed) {
+            self.is_write_paused.store(true, Ordering::Relaxed);
         }
     }
 
-    pub fn resume_writing(&mut self) {
-        if self.is_write_paused {
-            self.is_write_paused = false;
+    pub fn resume_writing(&self) {
+        if self.is_write_paused.load(Ordering::Relaxed) {
+            self.is_write_paused.store(false, Ordering::Relaxed);
         }
     }
 
-    pub fn can_write(&mut self) -> bool {
-        !self.is_write_paused
+    pub fn can_write(&self) -> bool {
+        !self.is_write_paused.load(Ordering::Relaxed)
     }
 }
 
@@ -176,7 +167,7 @@ impl RustProtocol {
     /// The argument is the transport representing the pipe connection.
     /// To receive data, wait for data_received() calls.
     /// When the connection is closed, connection_lost() is called.
-    fn connection_made(&mut self, py: Python, transport: PyObject) -> PyResult<()>{
+    fn connection_made(&mut self, transport: PyObject) -> PyResult<()>{
         let transport: Arc<PyObject> = Arc::new(transport);
 
         let flow_control: Arc<FlowControl> = Arc::new(
@@ -219,14 +210,14 @@ impl RustProtocol {
     ///       effect when it's most needed (when the app keeps writing
     ///       without yielding until pause_writing() is called).
     fn pause_writing(&mut self) {
-        self.pause_writing();
+        self.fc.pause_writing();
     }
 
     /// Called when the transport's buffer drains below the low-water mark.
     ///
     /// See pause_writing() for details.
     fn resume_writing(&mut self) {
-        self.resume_writing();
+        self.fc.resume_writing();
     }
 
 }

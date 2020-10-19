@@ -1,5 +1,5 @@
 use pyo3::prelude::*;
-use pyo3::{exceptions, PyAsyncProtocol, PyIterProtocol};
+use pyo3::exceptions;
 
 // 1xx codes
 static STATUS_100: &str = "100 Continue";

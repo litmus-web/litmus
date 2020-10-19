@@ -1,6 +1,5 @@
 use pyo3::prelude::*;
 use pyo3::PyAsyncProtocol;
-use pyo3::types::PyDict;
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -63,8 +62,8 @@ impl ASGIRunner {
 
 #[pymethods]
 impl ASGIRunner {
-    fn can_write(&mut self) -> bool {
-        self.fc.can_write()
+    fn can_write(&self) -> bool {
+         self.fc.can_write()
     }
 
     /// The public function responsible for formatting and sending the status line and headers
