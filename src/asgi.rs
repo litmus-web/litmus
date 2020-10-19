@@ -49,6 +49,8 @@ impl ASGIRunner {
         transport: Arc<PyObject>,
         fc: Arc<protocol::FlowControl>,
     ) -> Self {
+        //println!("initiated the runner!");  // todo remove
+
         ASGIRunner {
             method,
             path,
@@ -64,6 +66,11 @@ impl ASGIRunner {
 impl ASGIRunner {
     fn can_write(&self) -> bool {
          self.fc.can_write()
+    }
+
+    fn close_conn(&mut self, py: Python) -> PyResult<()> {
+        self.transport.call_method0(py, "close")?;
+        Ok(())
     }
 
     /// The public function responsible for formatting and sending the status line and headers
@@ -90,6 +97,7 @@ impl ASGIRunner {
             body.as_slice(),
         )?;
 
+        //println!("sent start");  // todo remove
         Ok(())
     }
 
@@ -100,6 +108,9 @@ impl ASGIRunner {
     ///       providing that the server has been given the go ahead from flow
     ///       control by using `can_write()`.
     fn send_body(&mut self, py: Python, body: &[u8]) -> PyResult<()> {
+        // todo if this is called from python its really slow????
+
+        //println!("sending body");  // todo remove
         Ok(asyncio::write_transport(
             py,
             &self.transport,
@@ -116,6 +127,7 @@ impl ASGIRunner {
     ///       providing that the server has been given the go ahead from flow
     ///       control by using `can_write()`.
     fn send_end(&mut self, py: Python) -> PyResult<()> {
+        //println!("sending end");  // todo remove
         Ok(asyncio::write_eof_transport(
             py,
             &self.transport,
@@ -134,6 +146,7 @@ impl PyAsyncProtocol for ASGIRunner {
         let gil = Python::acquire_gil();
         let py = gil.python();
         let fut = callback.call1(py, (slf,))?;
+        //println!("created future");  // todo remove
         Ok(fut.call_method0(py, "__await__")?)
     }
 }

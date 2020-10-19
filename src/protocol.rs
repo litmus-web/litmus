@@ -148,7 +148,7 @@ impl RustProtocol {
                         "Transport was None type upon complete response parsing")
                 )
             }
-
+            // println!("Parsed!");  // todo remove
 
         }
 
@@ -177,6 +177,8 @@ impl RustProtocol {
         self.fc = flow_control;
         self.transport = Some(transport);
 
+       //  println!("connection made!");  // todo remove
+
         Ok(())
     }
 
@@ -186,7 +188,7 @@ impl RustProtocol {
     /// meaning a regular EOF is received or the connection was lol*
     /// aborted or closed).
     fn connection_lost(&mut self, exc: PyObject) {
-
+        // println!("closing conn");  // todo remove
     }
 
     /// Called when the transport's buffer goes over the high-water mark.
@@ -211,6 +213,7 @@ impl RustProtocol {
     ///       without yielding until pause_writing() is called).
     fn pause_writing(&mut self) {
         self.fc.pause_writing();
+        // println!("paused writing!");  // todo remove
     }
 
     /// Called when the transport's buffer drains below the low-water mark.
@@ -218,6 +221,7 @@ impl RustProtocol {
     /// See pause_writing() for details.
     fn resume_writing(&mut self) {
         self.fc.resume_writing();
+        // println!("resumed writing!");  // todo remove
     }
 
 }
