@@ -1,5 +1,6 @@
 use pyo3::prelude::*;
 use pyo3::PyAsyncProtocol;
+use pyo3::types::PyDict;
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -8,7 +9,8 @@ use once_cell::sync::OnceCell;
 
 use crate::asyncio;
 use crate::protocol;
-use pyo3::types::PyDict;
+use crate::http;
+
 
 
 const HIGH_WATER_LIMIT: usize = 64 * 1024;  // 64KiB
@@ -48,6 +50,29 @@ impl RequestResponseCycle {
             transport,
             fc,
         }
+    }
+}
+
+#[pymethods]
+impl RequestResponseCycle {
+    fn send_start(
+        &mut self,
+        py: Python,
+        status: u16,
+        headers: Vec<(&[u8], &[u8])>,
+    ) -> PyResult<()> {
+
+        let body = http::format_response_start(
+            status,
+            headers,
+        )?;
+
+        let _ = self.send_body(
+            py,
+            body.as_slice(),
+        )?;
+
+        Ok(())
     }
 
     fn send_body(&mut self, py: Python, body: &[u8]) -> PyResult<()> {
