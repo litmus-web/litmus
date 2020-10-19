@@ -63,16 +63,17 @@ impl ASGIRunner {
 
 #[pymethods]
 impl ASGIRunner {
-    /// A public function that interfaces with flow control to signal if a send event
-    /// is allowed to write to the buffer or not.
     fn can_write(&mut self) -> bool {
         self.fc.can_write()
     }
 
     /// The public function responsible for formatting and sending the status line and headers
-    /// to the protocol buffer this does *not* account for flow control and should only be sent
-    /// providing that the server has been given the go ahead from flow control by using
-    /// `can_write()`.
+    /// to the transport buffer.
+    ///
+    /// WARNING:
+    ///     - This does *not* account for flow control and should only be sent
+    ///       providing that the server has been given the go ahead from flow
+    ///       control by using `can_write()`.
     fn send_start(
         &mut self,
         py: Python,
@@ -93,6 +94,12 @@ impl ASGIRunner {
         Ok(())
     }
 
+    /// The exposed Python function responsible for sending any content to the transport buffer.
+    ///
+    /// WARNING:
+    ///     - This does *not* account for flow control and should only be sent
+    ///       providing that the server has been given the go ahead from flow
+    ///       control by using `can_write()`.
     fn send_body(&mut self, py: Python, body: &[u8]) -> PyResult<()> {
         Ok(asyncio::write_transport(
             py,
@@ -101,7 +108,14 @@ impl ASGIRunner {
         )?)
     }
 
-
+    /// The exposed Python function responsible signaling end of transmission,
+    /// this is the equivalent of h11's eof which is a single `b''`, this is used
+    /// in place of the transport's write_eof.
+    ///
+    /// WARNING:
+    ///     - This does *not* account for flow control and should only be sent
+    ///       providing that the server has been given the go ahead from flow
+    ///       control by using `can_write()`.
     fn send_end(&mut self, py: Python) -> PyResult<()> {
         Ok(asyncio::write_eof_transport(
             py,
