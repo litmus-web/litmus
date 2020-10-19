@@ -16,7 +16,7 @@ use once_cell::sync::OnceCell;
 
 
 use crate::asyncio;
-use crate::asgi::RequestResponseCycle;
+use crate::asgi::ASGIRunner;
 
 
 const MAX_HEADERS: usize = 32;
@@ -143,7 +143,7 @@ impl RustProtocol {
             // This is just a edge case catch, transport should never be None by the time
             // any data is received however we still want to be certain.
             if self.transport.is_some() {
-                let task = RequestResponseCycle::new(
+                let task = ASGIRunner::new(
                     method,
                     path,
                     new_headers,

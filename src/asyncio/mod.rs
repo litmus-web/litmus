@@ -4,7 +4,7 @@
 ///
 use pyo3::prelude::*;
 
-use crate::asgi::RequestResponseCycle;
+use crate::asgi::ASGIRunner;
 
 // Standardised helpers
 pub fn get_loop(py: Python) -> PyResult<PyObject> {
@@ -13,7 +13,7 @@ pub fn get_loop(py: Python) -> PyResult<PyObject> {
 }
 
 // Task helpers
-pub fn create_server_task(py: Python, task: RequestResponseCycle) -> PyResult<&PyAny> {
+pub fn create_server_task(py: Python, task: ASGIRunner) -> PyResult<&PyAny> {
     let module = py.import("asyncio")?;
     let future = module.call_method1("ensure_future", (task,))?;
     Ok(future)

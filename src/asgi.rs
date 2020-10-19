@@ -12,20 +12,28 @@ use crate::protocol;
 use crate::http;
 
 
-
 const HIGH_WATER_LIMIT: usize = 64 * 1024;  // 64KiB
 static CALLBACK: OnceCell<PyObject> = OnceCell::new();
 
 
+/// A necessary setup function designed to save us constantly passing a callback
+/// between Python and Rust which can be a rather expensive operation compared to running
+/// the expensive operation once and then saving the callback to a static cell.
 pub fn setup(callback: PyObject) {
     let _: &PyObject = CALLBACK.get_or_init(|| {
         callback
     });
 }
 
-
+/// The ASGIRunner struct and methods are what actually interact with the ASGI system
+/// because Pyre is designed to work both as a standalone server as well as a framework system
+/// we need a simple way of handling the two.
+///
+/// The ASGIRunner is created *after* all parsing has completed this means that the ASGI
+/// interface may never be interacted with or ran when a request is taken in and rejected
+/// by the server protocol itself.
 #[pyclass]
-pub struct RequestResponseCycle {
+pub struct ASGIRunner {
     method: String,
     path: String,
     headers: HashMap<String, Vec<u8>>,
@@ -34,7 +42,7 @@ pub struct RequestResponseCycle {
     fc: Arc<protocol::FlowControl>,
 }
 
-impl RequestResponseCycle {
+impl ASGIRunner {
     pub fn new(
         method: String,
         path: String,
@@ -42,7 +50,7 @@ impl RequestResponseCycle {
         transport: Arc<PyObject>,
         fc: Arc<protocol::FlowControl>,
     ) -> Self {
-        RequestResponseCycle {
+        ASGIRunner {
             method,
             path,
             headers,
@@ -54,7 +62,17 @@ impl RequestResponseCycle {
 }
 
 #[pymethods]
-impl RequestResponseCycle {
+impl ASGIRunner {
+    /// A public function that interfaces with flow control to signal if a send event
+    /// is allowed to write to the buffer or not.
+    fn can_write(&mut self) -> bool {
+        self.fc.can_write()
+    }
+
+    /// The public function responsible for formatting and sending the status line and headers
+    /// to the protocol buffer this does *not* account for flow control and should only be sent
+    /// providing that the server has been given the go ahead from flow control by using
+    /// `can_write()`.
     fn send_start(
         &mut self,
         py: Python,
@@ -93,7 +111,7 @@ impl RequestResponseCycle {
 }
 
 #[pyproto]
-impl PyAsyncProtocol for RequestResponseCycle {
+impl PyAsyncProtocol for ASGIRunner {
     fn __await__(slf: PyRef<Self>) -> PyResult<PyObject> {
         let callback: &PyObject = CALLBACK
             .get()
@@ -106,3 +124,4 @@ impl PyAsyncProtocol for RequestResponseCycle {
         Ok(fut.call_method0(py, "__await__")?)
     }
 }
+

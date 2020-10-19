@@ -21,7 +21,7 @@ fn setup(callback: PyObject) {
 #[pymodule]
 fn _pyre(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<protocol::RustProtocol>()?;
-    m.add_class::<asgi::RequestResponseCycle>()?;
+    m.add_class::<asgi::ASGIRunner>()?;
     m.add_function(wrap_pyfunction!(setup, m)?)?;
     Ok(())
 }
