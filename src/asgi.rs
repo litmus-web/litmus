@@ -69,7 +69,7 @@ impl RequestResponseCycle {
 
 #[pyproto]
 impl PyAsyncProtocol for RequestResponseCycle {
-    fn __await__(slf: PyRef<Self>) -> PyResult<()> {
+    fn __await__(slf: PyRef<Self>) -> PyResult<PyObject> {
         let callback: &PyObject = CALLBACK
             .get()
             .unwrap();
@@ -78,8 +78,6 @@ impl PyAsyncProtocol for RequestResponseCycle {
         let gil = Python::acquire_gil();
         let py = gil.python();
         let fut = callback.call1(py, (slf,))?;
-
-
-        Ok(())
+        Ok(fut.call_method0(py, "__await__")?)
     }
 }
