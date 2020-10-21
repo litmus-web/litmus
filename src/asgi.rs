@@ -64,6 +64,7 @@ impl ASGIRunner {
 
 #[pymethods]
 impl ASGIRunner {
+
     fn can_write(&self) -> bool {
          self.fc.can_write()
     }
@@ -86,7 +87,6 @@ impl ASGIRunner {
         status: u16,
         headers: Vec<(&[u8], &[u8])>,
     ) -> PyResult<()> {
-
         let body = http::format_response_start(
             status,
             headers,
@@ -97,7 +97,6 @@ impl ASGIRunner {
             body.as_slice(),
         )?;
 
-        //println!("sent start");  // todo remove
         Ok(())
     }
 
@@ -110,7 +109,6 @@ impl ASGIRunner {
     fn send_body(&mut self, py: Python, body: &[u8]) -> PyResult<()> {
         // todo if this is called from python its really slow????
 
-        //println!("sending body");  // todo remove
         Ok(asyncio::write_transport(
             py,
             &self.transport,
@@ -127,7 +125,6 @@ impl ASGIRunner {
     ///       providing that the server has been given the go ahead from flow
     ///       control by using `can_write()`.
     fn send_end(&mut self, py: Python) -> PyResult<()> {
-        //println!("sending end");  // todo remove
         Ok(asyncio::write_eof_transport(
             py,
             &self.transport,
@@ -146,7 +143,6 @@ impl PyAsyncProtocol for ASGIRunner {
         let gil = Python::acquire_gil();
         let py = gil.python();
         let fut = callback.call1(py, (slf,))?;
-        //println!("created future");  // todo remove
         Ok(fut.call_method0(py, "__await__")?)
     }
 }

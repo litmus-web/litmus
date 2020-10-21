@@ -1,3 +1,25 @@
+/// Pyre Protocol
+///
+/// This contains both the protocol class itself and the flow control as well.
+///
+/// CHANGE_LOG:
+///     10/10/2020 - Removed Callback from protocol creation to a static item using OnceCell,
+///                  improves performance and lowers memory usage.
+///
+///     20/10/2020 - Moved FlowControl to use atomic booleans, how this didnt cause a compile error
+///                  before the system moved to internal mutability I dont know.
+///
+/// TO_ADD:
+///     - Add a way for MAX_HEADERS to be set when the server application is first made otherwise
+///       this could cause issues later on for users who rely on more than 32 Headers.
+///
+///     - Add a response error for hitting the ToManyHeaders Error and remove / only log the
+///       internal handling as this is to protect the server rather than a error.
+///
+/// TODO:
+///     - Debug why the server significantly slows down upon the send transport write.
+///
+
 use pyo3::prelude::*;
 use pyo3::exceptions;
 
@@ -148,7 +170,6 @@ impl RustProtocol {
                         "Transport was None type upon complete response parsing")
                 )
             }
-            // println!("Parsed!");  // todo remove
 
         }
 
