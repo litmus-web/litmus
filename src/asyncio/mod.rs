@@ -3,8 +3,11 @@
 /// as a set of helper functions to make the code more readable on the main file.
 ///
 use pyo3::prelude::*;
+use std::sync::Arc;
 
-use crate::asgi::ASGIRunner;
+
+use crate::server::asgi;
+
 
 // Standardised helpers
 pub fn get_loop(py: Python) -> PyResult<PyObject> {
@@ -12,20 +15,19 @@ pub fn get_loop(py: Python) -> PyResult<PyObject> {
     Ok(module.call_method0("get_event_loop")?.into_py(py))
 }
 
-// Task helpers
-pub fn create_server_task(py: Python, task: ASGIRunner) -> PyResult<&PyAny> {
+pub fn create_callback_task(py: Python, callback: asgi::ASGIRunner) -> PyResult<()> {
     let module = py.import("asyncio")?;
-    let future = module.call_method1("ensure_future", (task,))?;
-    Ok(future)
-}
-
-// Protocol Transport Helpers
-pub fn write_transport(py: Python, transport: &PyObject, data: &[u8]) -> PyResult<()> {
-    transport.call_method1(py, "write", (data,))?;
+    let _ = module.call_method1("ensure_future", (callback, ))?;
     Ok(())
 }
 
-pub fn write_eof_transport(py: Python, transport: &PyObject) -> PyResult<()> {
+// Protocol Transport Helpers
+pub fn write_transport(py: Python, transport: &Arc<PyObject>, data: &[u8]) -> PyResult<()> {
+    transport.call_method1(py, "write", (data, ))?;
+    Ok(())
+}
+
+pub fn write_eof_transport(py: Python, transport: &Arc<PyObject>) -> PyResult<()> {
     let _ = write_transport(py, transport, b"")?;
     Ok(())
 }

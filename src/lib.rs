@@ -1,18 +1,9 @@
-pub mod utils;
 pub mod asyncio;
 pub mod http;
-pub mod framework;
-pub mod asgi;
-pub mod protocol;
+pub mod server;
+pub mod utils;
 
 use pyo3::prelude::*;
-use pyo3::wrap_pyfunction;
-
-
-#[pyfunction]
-fn setup(callback: PyObject) {
-    asgi::setup(callback)
-}
 
 
 ///
@@ -20,8 +11,6 @@ fn setup(callback: PyObject) {
 ///
 #[pymodule]
 fn _pyre(_py: Python, m: &PyModule) -> PyResult<()> {
-    m.add_class::<protocol::RustProtocol>()?;
-    m.add_class::<asgi::ASGIRunner>()?;
-    m.add_function(wrap_pyfunction!(setup, m)?)?;
+    m.add_class::<server::protocols::h11::RustProtocol>()?;
     Ok(())
 }
