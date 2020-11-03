@@ -1,5 +1,5 @@
-import re
 import inspect
+import re
 import typing as t
 
 if __name__ == "__main__":
@@ -7,8 +7,12 @@ if __name__ == "__main__":
 else:
     from .converters import parameter_converter, NoDefault
 
-
-__all__ = ["Blueprint"]
+__all__ = [
+    "Blueprint",
+    "HTTPEndpoint",
+    "BaseEndpoint",
+    "endpoint",
+]
 
 
 _converter_re = re.compile(r"\{([^}]+):([^}]+)}", re.VERBOSE)
@@ -152,14 +156,24 @@ class BaseEndpoint:
     this should not be used as a standard endpoint but be inherited in order
     to make standard endpoints or websocket endpoints.
     """
+
     def __init__(
             self,
-            callback: t.Callable,
             route: str,
-            converter_cache: t.Callable
+            callback: t.Callable,
+            before_invoke: t.Optional[t.Callable],
+            on_error: t.Optional[t.Callable],
+            converter_cache: t.Callable,
+            **options,
     ):
-        self.callback = callback
+        self.route_options = options
+
         self.callback_name = callback.__name__
+        self.callback = callback
+        self.before_invoke = before_invoke
+        self.on_error = on_error
+
+        self._converter_cache = converter_cache
 
         callback_inspect = inspect.getfullargspec(callback)
         self._converters = _compile_converter(callback_inspect, converter_cache)
@@ -167,37 +181,86 @@ class BaseEndpoint:
         self._raw_route = route
         self._compiled_route = parse_route(route)
 
-    @property
-    def route(self):
-        return self._compiled_route
-
-    def __call__(self, *args):
-        """
-        Called by the framework when ever a request is handled and the
-        route is matched to this object.
-        This converts any arguments using the compiled converters
-        made on start up, depending on how heavy the conversion
-        tasks are consider using the 'converter_cache' option as
-        a decorator parameter.
-        """
-        new_args = map(self._convert, zip(args, self._converters))
-        return self.callback(*new_args)
+    async def __call__(self, request, *args):
+        try:
+            if self.before_invoke is not None:
+                await self.before_invoke(request, *args)
+            new_args = map(self._convert, zip(args, self._converters))
+            return await self.callback(request, *new_args)
+        except Exception as e:
+            if self.on_error is not None:
+                await self.on_error(request, e)
+                return e
+            raise e
 
     @staticmethod
     def _convert(parts):
         return parts[1](parts[0])
 
-    # todo add a error handler for deco
+    @property
+    def route(self):
+        return self._compiled_route
 
 
-class Endpoint(BaseEndpoint):
+class HTTPEndpoint(BaseEndpoint):
+
     def __init__(
             self,
-            callback: t.Callable,
             route: str,
-            converter_cache: t.Callable,
+            callback: t.Callable,
+            before_invoke: t.Optional[t.Callable] = None,
+            on_error: t.Optional[t.Callable] = None,
+            converter_cache: t.Callable = None,
+            **options
     ):
-        super().__init__(callback, route, converter_cache)
+        """
+            The main HTTP endpoint for standard routes. This is is created when
+            ever a function is decorated with the `@pyre.framework.endpoint()`
+            decorator.
+
+            Note that the endpoint is not created until the class instance is
+            actually methods created (If it is a class blueprint) due to the
+            nature of python instance.
+
+            args:
+                route:
+                    The raw route of the endpoint using the framework
+                    placeholders e.g. 'hello/world/{name:alpha}'
+
+                callback:
+                    This callable should be a coroutine type and will be called
+                    when ever a in coming request's URL matches the route.
+
+                before_invoke:
+                    This is a Optional callable that should be a coroutine and
+                    will be called before any arguments are converted and the
+                    endpoint called.
+
+                on_error:
+                    This is a Optional callable that should be a coroutine,
+                    if this is is not None it will be called when ever the
+                    endpoint raises an exception, *this will silence the error
+                    if not re-raised*.
+
+                converter_cache:
+                    This is a Optional callable that can be something like
+                    functool's lru_cache() system or another custom cache
+                    system, this can be used to save time when processing
+                    expensive but repetitive inputs or converter operations.
+
+                **options:
+                    Any other options you wish to be sent to the route add
+                    function on the framework WebApplication instance.
+        """
+
+        super().__init__(
+            route,
+            callback,
+            before_invoke,
+            on_error,
+            converter_cache,
+            **options
+        )
 
     def __repr__(self):
         return f"Endpoint(" \
@@ -207,13 +270,79 @@ class Endpoint(BaseEndpoint):
 
 
 class Blueprint:
-    __endpoints = []
+    _endpoints = []
 
     def __init_subclass__(cls, **kwargs):
-        cls.__endpoints = []
+        cls._endpoints = []
 
-    def call_endpoint(self, *args, **kwargs):
-        pass
+        for k, v in cls.__dict__.items():
+            if k.startswith("__") or k.endswith("__"):
+                continue
 
-    async def on_endpoint_error(self, request, exception):
+            if isinstance(v, HTTPWrapper):
+                cls._endpoints.append(v)
+                setattr(cls, v.callback_name, v.original_callback)
+
+    async def invoke_endpoint(self, ep, request):
+        try:
+            return await ep(request, *request.args)
+        except Exception as e:
+            await self.on_blueprint_error(request, e)
+
+    async def on_blueprint_error(self, request, exception):
         raise exception
+
+
+class HTTPWrapper:
+    __error_name = ""
+    __middle_name = ""
+
+    def __init__(self, route, callback, **kwargs):
+        self.route = route
+        self.kwargs = kwargs
+        self.callback_name = callback.__name__
+        self.original_callback = callback
+
+    def to_endpoint(self, instance):
+        callback = getattr(instance, self.callback_name)
+        error_handler = getattr(instance, self.error_handler_name, None)
+        before_invoke = getattr(instance, self.middle_handler_name, None)
+
+        return HTTPEndpoint(
+            route=self.route,
+            callback=callback,
+            before_invoke=before_invoke,
+            on_error=error_handler,
+            **self.kwargs
+        )
+
+    @property
+    def error_handler_name(self):
+        return self.__error_name
+
+    @property
+    def middle_handler_name(self):
+        return self.__middle_name
+
+    @classmethod
+    def error(cls, func):
+        cls.__error_name = func.__name__
+        return func
+
+    @classmethod
+    def before_invoke(cls, func):
+        cls.__middle_name = func.__name__
+        return func
+
+
+def endpoint(route: str, **kwargs):
+    def wrapper(func):
+        return HTTPWrapper(route, func, **kwargs)
+
+    return wrapper
+
+
+def apply_methods(instance):
+    endpoints: t.List[HTTPWrapper] = instance._endpoints
+    for ep in endpoints:
+        setattr(instance, ep.callback_name, ep.to_endpoint(instance))
