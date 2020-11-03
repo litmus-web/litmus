@@ -2,10 +2,7 @@ import inspect
 import re
 import typing as t
 
-if __name__ == "__main__":
-    from converters import parameter_converter, NoDefault
-else:
-    from .converters import parameter_converter, NoDefault
+from .converters import parameter_converter, NoDefault
 
 __all__ = [
     "Blueprint",
@@ -203,7 +200,6 @@ class BaseEndpoint:
 
 
 class HTTPEndpoint(BaseEndpoint):
-
     def __init__(
             self,
             route: str,
@@ -214,43 +210,43 @@ class HTTPEndpoint(BaseEndpoint):
             **options
     ):
         """
-            The main HTTP endpoint for standard routes. This is is created when
-            ever a function is decorated with the `@pyre.framework.endpoint()`
-            decorator.
+        The main HTTP endpoint for standard routes. This is is created when
+        ever a function is decorated with the `@pyre.framework.endpoint()`
+        decorator.
 
-            Note that the endpoint is not created until the class instance is
-            actually methods created (If it is a class blueprint) due to the
-            nature of python instance.
+        Note that the endpoint is not created until the class instance is
+        actually methods created (If it is a class blueprint) due to the
+        nature of python instance.
 
-            args:
-                route:
-                    The raw route of the endpoint using the framework
-                    placeholders e.g. 'hello/world/{name:alpha}'
+        args:
+            route:
+                The raw route of the endpoint using the framework
+                placeholders e.g. 'hello/world/{name:alpha}'
 
-                callback:
-                    This callable should be a coroutine type and will be called
-                    when ever a in coming request's URL matches the route.
+            callback:
+                This callable should be a coroutine type and will be called
+                when ever a in coming request's URL matches the route.
 
-                before_invoke:
-                    This is a Optional callable that should be a coroutine and
-                    will be called before any arguments are converted and the
-                    endpoint called.
+            before_invoke:
+                This is a Optional callable that should be a coroutine and
+                will be called before any arguments are converted and the
+                endpoint called.
 
-                on_error:
-                    This is a Optional callable that should be a coroutine,
-                    if this is is not None it will be called when ever the
-                    endpoint raises an exception, *this will silence the error
-                    if not re-raised*.
+            on_error:
+                This is a Optional callable that should be a coroutine,
+                if this is is not None it will be called when ever the
+                endpoint raises an exception, *this will silence the error
+                if not re-raised*.
 
-                converter_cache:
-                    This is a Optional callable that can be something like
-                    functool's lru_cache() system or another custom cache
-                    system, this can be used to save time when processing
-                    expensive but repetitive inputs or converter operations.
+            converter_cache:
+                This is a Optional callable that can be something like
+                functool's lru_cache() system or another custom cache
+                system, this can be used to save time when processing
+                expensive but repetitive inputs or converter operations.
 
-                **options:
-                    Any other options you wish to be sent to the route add
-                    function on the framework WebApplication instance.
+            **options:
+                Any other options you wish to be sent to the route add
+                function on the framework WebApplication instance.
         """
 
         super().__init__(
