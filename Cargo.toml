@@ -5,7 +5,7 @@ authors = ["Harrison Burt <57491488+ChillFish8@users.noreply.github.com>"]
 edition = "2018"
 
 [lib]
-name = "_pyre"
+name = "pyre"
 crate-type = ["cdylib"]
 
 [dependencies.pyo3]

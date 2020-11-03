@@ -65,6 +65,7 @@ use crate::asyncio;
 use crate::server::asgi;
 use crate::utils;
 use crate::server::flow_control::FlowControl;
+use std::sync::atomic::Ordering::Relaxed;
 
 
 const MAX_HEADERS: usize = 32;
@@ -75,6 +76,8 @@ const HIGH_WATER_LIMIT: usize = 64 * 1024;
 /// Max amount of messages to buffer onto the channel
 const CHANNEL_BUFFER_SIZE: usize = 10;
 
+/// Standard Keep-Alive timeout
+const KEEP_ALIVE_TIMEOUT: usize = 5;
 
 type FlowControlType = Arc<FlowControl>;
 type TransportType = Arc<PyObject>;
@@ -93,8 +96,6 @@ pub struct RustProtocol {
     expected_content_length: usize,
     body_length_parsed: usize,
     more_body: Arc<AtomicBool>,
-
-    disconnected: bool,
 }
 
 #[pymethods]
@@ -117,8 +118,6 @@ impl RustProtocol {
             expected_content_length: 0,
             body_length_parsed: 0,
             more_body: Arc::new(AtomicBool::new(true)),
-
-            disconnected: false,
         })
     }
 
@@ -139,8 +138,6 @@ impl RustProtocol {
         py: Python,
         data: &[u8],
     ) -> PyResult<()> {
-        println!("Being given: {}", data.len());
-
         self.add_data(py, data)?;
 
         // Send to receive and clear body if we have finished parsing.
@@ -248,7 +245,8 @@ impl RustProtocol {
         exc: PyObject
     ) -> PyResult<()>{
 
-        self.disconnected = true;
+        self.flow_control.disconnected.store(true, Relaxed);
+
         if !exc.is_none(py) {
 
             // todo make this not suck
@@ -293,8 +291,8 @@ impl RustProtocol {
 
     /// The callback given to `EventLoop.call_later()` which closes
     /// the connection when the keep alive timeout has elapsed.
-    pub fn keep_alive_callback(&mut self) {
-        // todo implement
+    pub fn keep_alive_callback(&mut self, py: Python) {
+        if !self.flow_control.is_closing(py) {}
     }
 }
 

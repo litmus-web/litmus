@@ -9,6 +9,7 @@ pub struct FlowControl {
     pub is_read_paused: AtomicBool,
     pub is_write_paused: AtomicBool,
     pub waiting_for_continue: AtomicBool,
+    pub disconnected: AtomicBool,
 }
 
 impl FlowControl {
@@ -17,7 +18,8 @@ impl FlowControl {
             transport,
             is_read_paused: AtomicBool::from(false),
             is_write_paused: AtomicBool::from(false),
-            waiting_for_continue: AtomicBool::from(false)
+            waiting_for_continue: AtomicBool::from(false),
+            disconnected: AtomicBool::from(false)
         }
     }
 
@@ -29,6 +31,7 @@ impl FlowControl {
             is_read_paused: Default::default(),
             is_write_paused: Default::default(),
             waiting_for_continue: Default::default(),
+            disconnected: Default::default(),
         })
     }
 
@@ -58,5 +61,9 @@ impl FlowControl {
             self.transport.call_method0(py, "resume_reading")?;
         }
         Ok(())
+    }
+
+    pub fn is_closing(&self, py: Python) -> PyResult<bool> {
+        Ok(self.transport.call_method0(py, "is_closing")?.is_true()?)
     }
 }

@@ -26,6 +26,10 @@ use bytes::{BytesMut, Bytes};
 use crate::server::flow_control::FlowControl;
 
 
+const HTTP_DISCONNECT_TYPE: &'static str = "http.disconnect";
+const HTTP_BODY_TYPE: &'static str = "http.request";
+
+
 #[pyclass]
 pub struct ASGIRunner {
     callback: PyObject,
@@ -224,7 +228,7 @@ impl PyIterProtocol for Receive {
         mut slf: PyRefMut<Self>
     ) -> PyResult<IterNextOutput<
         Option<PyObject>,
-        (Py<PyBytes>, bool)
+        (&'static str, Py<PyBytes>, bool)
     >> {
         // todo: This is iterating more than it should meaning
         // the body is being sent to the channel more than it should
@@ -237,6 +241,17 @@ impl PyIterProtocol for Receive {
         // okay so we worked out what caused this -> We're being give 32KiB
         // chunks of data compared to Uvicorn's 256
         // yikes
+
+
+        // If the client has disconnected or we've completed a response todo: Add response check
+        if slf.flow_control.disconnected {
+            let py_bytes = PyBytes::new(slf.py(), "".as_bytes());
+            Ok(IterNextOutput::Return((
+                HTTP_BODY_TYPE,
+                Py::from(py_bytes),
+                false,
+            )))
+        }
 
         if !slf.pending {
             slf.flow_control.resume_reading(slf.py())?;
@@ -254,6 +269,7 @@ impl PyIterProtocol for Receive {
 
         let py_bytes = PyBytes::new(slf.py(), body.as_ref());
         Ok(IterNextOutput::Return((
+            HTTP_BODY_TYPE,
             Py::from(py_bytes),
             slf.more_body.load(Relaxed)
         )))
