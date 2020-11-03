@@ -242,18 +242,18 @@ impl RustProtocol {
     pub fn connection_lost(
         &mut self,
         py: Python,
-        exc: PyObject
+        _exc: PyObject
     ) -> PyResult<()>{
+        if self.transport.is_none() {
+            return Ok(())
+        }
 
+        let transport_ref = match self.transport.as_ref() {
+            Some(t) => t,
+            _ => return OK(())
+        };
         self.flow_control.disconnected.store(true, Relaxed);
 
-        if !exc.is_none(py) {
-
-            // todo make this not suck
-            return Err(PyRuntimeError::new_err(
-                "A disconnect error has occurred."
-            ))
-        }
 
         Ok(())
     }
@@ -291,8 +291,20 @@ impl RustProtocol {
 
     /// The callback given to `EventLoop.call_later()` which closes
     /// the connection when the keep alive timeout has elapsed.
-    pub fn keep_alive_callback(&mut self, py: Python) {
-        if !self.flow_control.is_closing(py) {}
+    pub fn keep_alive_callback(&mut self, py: Python) -> PyResult<()> {
+        if self.transport.is_none() {
+            return Ok(())
+        }
+
+        let transport_ref = match self.transport.as_ref() {
+            Some(t) => t,
+            _ => return OK(())
+        };
+
+        if !self.flow_control.is_closing(py) {
+            let _ = transport_ref.call_method0(py, "close")?;
+        }
+        Ok(())
     }
 }
 
