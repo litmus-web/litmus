@@ -293,7 +293,7 @@ impl RustProtocol {
             _ => return OK(())
         };
 
-        if !self.flow_control.is_closing(py) {
+        if !self.flow_control.is_closing(py)? {
             let _ = transport_ref.call_method0(py, "close")?;
         }
         Ok(())

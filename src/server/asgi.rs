@@ -244,7 +244,7 @@ impl PyIterProtocol for Receive {
 
 
         // If the client has disconnected or we've completed a response todo: Add response check
-        if slf.flow_control.disconnected {
+        if slf.flow_control.disconnected.load(Relaxed) {
             let py_bytes = PyBytes::new(slf.py(), "".as_bytes());
             Ok(IterNextOutput::Return((
                 HTTP_BODY_TYPE,
