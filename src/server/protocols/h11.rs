@@ -244,10 +244,6 @@ impl RustProtocol {
         py: Python,
         _exc: PyObject
     ) -> PyResult<()>{
-        if self.transport.is_none() {
-            return Ok(())
-        }
-
         let transport_ref = match self.transport.as_ref() {
             Some(t) => t,
             _ => return OK(())
@@ -292,10 +288,6 @@ impl RustProtocol {
     /// The callback given to `EventLoop.call_later()` which closes
     /// the connection when the keep alive timeout has elapsed.
     pub fn keep_alive_callback(&mut self, py: Python) -> PyResult<()> {
-        if self.transport.is_none() {
-            return Ok(())
-        }
-
         let transport_ref = match self.transport.as_ref() {
             Some(t) => t,
             _ => return OK(())
