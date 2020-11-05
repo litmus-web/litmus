@@ -64,6 +64,6 @@ impl FlowControl {
     }
 
     pub fn is_closing(&self, py: Python) -> PyResult<bool> {
-        Ok(self.transport.call_method0(py, "is_closing")?.is_true()?)
+        Ok(self.transport.call_method0(py, "is_closing")?.is_true(py)?)
     }
 }
