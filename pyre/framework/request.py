@@ -9,10 +9,8 @@ class Request:
             headers: t.List[t.Tuple[bytes, bytes]],
             receive: t.Callable,
     ):
+        pass
 
     def test(self):
         self._x = 1
 
-
-x = Request()
-x.test()
