@@ -60,7 +60,7 @@ class Test:
 
 
 async def tet(*args):
-    pass
+    await asyncio.sleep(10)
 
 
 async def main():

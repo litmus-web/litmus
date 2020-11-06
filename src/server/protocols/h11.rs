@@ -367,6 +367,7 @@ impl RustProtocol {
             return Ok(())
         }
 
+
         let tx = self.parser_sender
             .as_ref()
             .unwrap();
@@ -375,8 +376,9 @@ impl RustProtocol {
 
             // todo make this a multi line string -> ?
             return Err(exceptions::PyRuntimeError::new_err(format!(
-                "Rust channel sender could not send data to receiving buffer.\n Original Error: {:?}\n",
-                e.to_string()
+                "Rust channel sender could not send data to receiving buffer.\n \
+                Original Error: {:?}, {:?}\n",
+                e, e.to_string()
             )))
         }
         Ok(())
