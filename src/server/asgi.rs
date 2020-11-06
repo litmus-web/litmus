@@ -1,3 +1,11 @@
+use std::collections::HashMap;
+use std::sync::{Arc, mpsc};
+use std::sync::atomic::AtomicBool;
+use std::sync::atomic::Ordering::Relaxed;
+
+use bytes::{Bytes, BytesMut};
+use pyo3::{exceptions, PyAsyncProtocol, PyIterProtocol};
+use pyo3::iter::IterNextOutput;
 ///
 /// The asgi.rs file contains everything needed for interacting with the ASGI
 /// interface on Python's side communicating with the RustProtocols.
@@ -12,19 +20,9 @@
 ///
 
 use pyo3::prelude::*;
-use pyo3::{PyAsyncProtocol, PyIterProtocol, exceptions};
-use pyo3::iter::IterNextOutput;
 use pyo3::types::PyBytes;
 
-use std::sync::{mpsc, Arc};
-use std::collections::HashMap;
-use std::sync::atomic::AtomicBool;
-use std::sync::atomic::Ordering::Relaxed;
-
-use bytes::{BytesMut, Bytes};
-
 use crate::server::flow_control::FlowControl;
-
 
 const HTTP_DISCONNECT_TYPE: &'static str = "http.disconnect";
 const HTTP_BODY_TYPE: &'static str = "http.request";
@@ -246,7 +244,7 @@ impl PyIterProtocol for Receive {
         // If the client has disconnected or we've completed a response todo: Add response check
         if slf.flow_control.disconnected.load(Relaxed) {
             let py_bytes = PyBytes::new(slf.py(), "".as_bytes());
-            Ok(IterNextOutput::Return((
+            return Ok(IterNextOutput::Return((
                 HTTP_BODY_TYPE,
                 Py::from(py_bytes),
                 false,

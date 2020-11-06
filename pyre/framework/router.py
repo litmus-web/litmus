@@ -301,8 +301,8 @@ class HTTPWrapper:
 
     def to_endpoint(self, instance):
         callback = getattr(instance, self.callback_name)
-        error_handler = getattr(instance, self.error_handler_name, None)
-        before_invoke = getattr(instance, self.middle_handler_name, None)
+        error_handler = getattr(instance, self.__error_name, None)
+        before_invoke = getattr(instance, self.__middle_name, None)
 
         return HTTPEndpoint(
             route=self.route,
@@ -311,14 +311,6 @@ class HTTPWrapper:
             on_error=error_handler,
             **self.kwargs
         )
-
-    @property
-    def error_handler_name(self):
-        return self.__error_name
-
-    @property
-    def middle_handler_name(self):
-        return self.__middle_name
 
     @classmethod
     def error(cls, func):

@@ -137,4 +137,4 @@ if __name__ == '__main__':
 
     import asyncio
 
-    asyncio.run(test.my_endpoint())
+    asyncio.run(test.my_endpoint(21))
