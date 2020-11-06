@@ -246,7 +246,7 @@ impl RustProtocol {
     ) -> PyResult<()>{
         let transport_ref = match self.transport.as_ref() {
             Some(t) => t,
-            _ => return OK(())
+            _ => return Ok(())
         };
         self.flow_control.disconnected.store(true, Relaxed);
 
@@ -290,7 +290,7 @@ impl RustProtocol {
     pub fn keep_alive_callback(&mut self, py: Python) -> PyResult<()> {
         let transport_ref = match self.transport.as_ref() {
             Some(t) => t,
-            _ => return OK(())
+            _ => return Ok(())
         };
 
         if !self.flow_control.is_closing(py)? {
