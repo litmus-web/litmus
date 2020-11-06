@@ -138,6 +138,7 @@ impl RustProtocol {
         py: Python,
         data: &[u8],
     ) -> PyResult<()> {
+        println!("got {}", &data.len());
         self.add_data(py, data)?;
 
         // Send to receive and clear body if we have finished parsing.
@@ -228,7 +229,9 @@ impl RustProtocol {
     /// When the connection is closed, connection_lost() is called.
     pub fn connection_made(&mut self, transport: PyObject) -> PyResult<()>{
         if self.transport.is_none() {
-            self.transport = Some(Arc::new(transport));
+            let transport = Arc::new(transport);
+            self.transport = Some(transport.clone());
+            self.flow_control = Arc::new(FlowControl::new(transport.clone()))
         }
 
         Ok(())
