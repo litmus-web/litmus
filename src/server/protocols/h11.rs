@@ -203,6 +203,8 @@ impl RustProtocol {
 
         if self.send_to_receive(self.parser_body.clone())? {
             self.parser_body.clear();
+        } else {
+            self.flow_control.pause_reading(py)?;
         }
 
 

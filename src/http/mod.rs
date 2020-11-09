@@ -173,10 +173,10 @@ fn get_status_from_u16(status: u16) -> &'static str {
 /// }
 /// ```
 pub fn format_response_start(
-    status: u16,
-    headers: Vec<(&[u8], &[u8])>,
+    status: &u16,
+    headers: &Vec<(Vec<u8>, Vec<u8>)>,
 ) -> PyResult<Vec<u8>> {
-    let status_line = get_status_from_u16(status);
+    let status_line = get_status_from_u16(*status);
 
     // Check if its not the default
     if status_line == "" {

@@ -23,6 +23,7 @@ use pyo3::prelude::*;
 use pyo3::types::PyBytes;
 
 use crate::server::flow_control::FlowControl;
+use crate::http;
 
 const HTTP_DISCONNECT_TYPE: &'static str = "http.disconnect";
 const HTTP_BODY_TYPE: &'static str = "http.request";
@@ -112,7 +113,11 @@ impl PyAsyncProtocol for ASGIRunner {
 struct SendStart {
     flow_control: Arc<FlowControl>,
     transport: Arc<PyObject>,
-    data: Option<PyObject>,
+
+    status: u16,
+    headers: Vec<(Vec<u8>, Vec<u8>)>,
+    data: BytesMut,
+    more_body: bool,
 }
 
 impl SendStart {
@@ -123,7 +128,11 @@ impl SendStart {
         SendStart {
             flow_control,
             transport,
-            data: None,
+
+            status: 0,
+            headers: Vec::new(),
+            data: BytesMut::new(),
+            more_body: true,
         }
     }
 }
@@ -132,10 +141,17 @@ impl SendStart {
 impl SendStart {
     #[call]
     fn __call__(
-        mut slf: PyRefMut<Self>,
-        data: PyObject,
-    ) -> PyResult<PyRefMut<Self>> {
-        slf.data = Some(data);
+        mut slf: PyRefMut<'static, Self>,
+        status: u16,
+        headers: Vec<(Vec<u8>, Vec<u8>)>,
+        data: &[u8],
+        more_body: bool,
+    ) -> PyResult<PyRefMut<'static, Self>> {
+
+        slf.status = status;
+        slf.headers = headers;
+        slf.data.extend_from_slice(data);
+        slf.more_body = more_body;
 
         Ok(slf)
     }
@@ -151,14 +167,13 @@ impl PyAsyncProtocol for SendStart {
 #[pyproto]
 impl PyIterProtocol for SendStart {
     fn __next__(
-        slf: PyRefMut<Self>
+        mut slf: PyRefMut<Self>
     ) -> PyResult<IterNextOutput<Option<PyObject>, Option<PyObject>>> {
-        // Check so we dont screw everything if it's not initialised.
-        if !slf.data.is_none() {
-            return Err(exceptions::PyValueError::new_err(
-                "parameter 'data' was type 'None' at point of iteration."
-            ))
+
+        if slf.status != 0 {
         }
+
+
 
 
         Ok(IterNextOutput::Return(None))
@@ -185,6 +200,8 @@ struct Receive {
     receiver: mpsc::Receiver<BytesMut>,
     more_body: Arc<AtomicBool>,
     pending: bool,
+
+    response_complete: bool,
 }
 
 impl Receive {
@@ -200,6 +217,7 @@ impl Receive {
             receiver,
             more_body,
             pending: false,
+            response_complete: false,
         }
     }
 }
@@ -228,21 +246,9 @@ impl PyIterProtocol for Receive {
         Option<PyObject>,
         (&'static str, Py<PyBytes>, bool)
     >> {
-        // todo: This is iterating more than it should meaning
-        // the body is being sent to the channel more than it should
-        // i have a suspicion we should fill the buffer until it hits
-        // high water however i am not sure so do check out.
-        //
-        // currently Pyre is timed at 70micros per iteration while
-        // uvicorn is timed at 220micros which is 3x slower *nice*
-        //
-        // okay so we worked out what caused this -> We're being give 32KiB
-        // chunks of data compared to Uvicorn's 256
-        // yikes
-
 
         // If the client has disconnected or we've completed a response todo: Add response check
-        if slf.flow_control.disconnected.load(Relaxed) {
+        if slf.flow_control.disconnected.load(Relaxed) | slf.response_complete {
             let py_bytes = PyBytes::new(slf.py(), "".as_bytes());
             return Ok(IterNextOutput::Return((
                 HTTP_BODY_TYPE,
@@ -251,13 +257,10 @@ impl PyIterProtocol for Receive {
             )))
         }
 
-        let py = slf.py();
-
         if !slf.pending {
-            slf.flow_control.resume_reading(py)?;
+            slf.flow_control.resume_reading(slf.py())?;
             slf.pending = true;
         }
-
 
         let body = match slf.receiver.try_recv() {
             Ok(data) => data,
@@ -266,8 +269,9 @@ impl PyIterProtocol for Receive {
 
         slf.pending = false;
 
+        let py_bytes = PyBytes::new(slf.py(), body.as_ref());
 
-        let py_bytes = PyBytes::new(py, body.as_ref());
+
         Ok(IterNextOutput::Return((
             HTTP_BODY_TYPE,
             Py::from(py_bytes),
