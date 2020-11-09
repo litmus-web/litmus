@@ -1,8 +1,8 @@
 import time
 import re
 
-from pyre.helpers import parse_route, PathNotLastError
-from pyre.helpers.route_mapper import _standard_type_converter
+from pyre.framework.router import parse_route
+from pyre.framework.router import _standard_type_re_converter
 
 
 def test_regex(regex_str: str, test_string: str):
@@ -58,7 +58,7 @@ def make_fail_string(combination: tuple, seperator: str):
 if __name__ == '__main__':
     import itertools
 
-    combinations = itertools.permutations(_standard_type_converter.keys(), len(_standard_type_converter.keys()))
+    combinations = itertools.permutations(_standard_type_re_converter.keys(), len(_standard_type_re_converter.keys()))
 
     passed = True
     times, count = [], 0
@@ -69,7 +69,7 @@ if __name__ == '__main__':
 
         try:
             built_regex = parse_route(route)
-        except PathNotLastError:
+        except ValueError:
             if combo.index("path") == (len(combo) - 1):
                 print(f"Test Failed! - Path should have succeeded.\n"
                       f" Combo: {combo!r}\n"

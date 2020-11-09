@@ -4,7 +4,7 @@ use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering::Relaxed;
 
 use bytes::{Bytes, BytesMut};
-use pyo3::{exceptions, PyAsyncProtocol, PyIterProtocol};
+use pyo3::{PyAsyncProtocol, PyIterProtocol};
 use pyo3::iter::IterNextOutput;
 ///
 /// The asgi.rs file contains everything needed for interacting with the ASGI
@@ -141,16 +141,16 @@ impl SendStart {
 impl SendStart {
     #[call]
     fn __call__(
-        mut slf: PyRefMut<'static, Self>,
+        mut slf: PyRefMut<Self>,
         status: u16,
         headers: Vec<(Vec<u8>, Vec<u8>)>,
-        data: &[u8],
+        data: Vec<u8>,
         more_body: bool,
-    ) -> PyResult<PyRefMut<'static, Self>> {
+    ) -> PyResult<PyRefMut<Self>> {
 
         slf.status = status;
         slf.headers = headers;
-        slf.data.extend_from_slice(data);
+        slf.data.extend(data);
         slf.more_body = more_body;
 
         Ok(slf)
@@ -171,6 +171,10 @@ impl PyIterProtocol for SendStart {
     ) -> PyResult<IterNextOutput<Option<PyObject>, Option<PyObject>>> {
 
         if slf.status != 0 {
+            let body = http::format_response_start(
+                slf.status.clone(),
+                slf.headers.clone(),
+            )?;
         }
 
 
