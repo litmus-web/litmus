@@ -105,6 +105,7 @@ impl RustProtocol {
         py: Python,
         callback: PyObject,
     ) -> PyResult<Self> {
+
         Ok(RustProtocol {
             callback,
 
@@ -202,8 +203,10 @@ impl RustProtocol {
             headers,
         )?;
 
-        self.send_to_receive(self.parser_body.clone())?;
-        self.parser_body.clear();
+        if self.send_to_receive(self.parser_body.clone())? {
+            self.parser_body.clear();
+        }
+
 
         Ok(())
     }
@@ -222,7 +225,7 @@ impl RustProtocol {
     /// transport is up to the protocol.
     pub fn eof_received(&mut self) {}
 
-    /// Called when a connection is made.
+    /// Called when a connection is made
     ///
     /// The argument is the transport representing the pipe connection.
     /// To receive data, wait for data_received() calls.
@@ -362,26 +365,21 @@ impl RustProtocol {
     /// This what actually sends the data to the receive channel,
     /// it does not check if the channel is full or not, the default
     /// channel size is 10 and should never get close to that.
-    fn send_to_receive(&self, body: BytesMut) -> PyResult<()> {
+    fn send_to_receive(&self, body: BytesMut) -> PyResult<bool> {
         if self.parser_sender.is_none() {
-            return Ok(())
+            return Ok(false)
         }
 
+        // todo make this check if response done / working
+        let tx = match self.parser_sender.as_ref() {
+            Some(t) => t,
+            _ => return Err(exceptions::PyRuntimeError::new_err(
+                "Parser channel was NoneType at runtime :("
+            ))
+        };
 
-        let tx = self.parser_sender
-            .as_ref()
-            .unwrap();
-
-        if let Err(e) = tx.send(body) {
-
-            // todo make this a multi line string -> ?
-            return Err(exceptions::PyRuntimeError::new_err(format!(
-                "Rust channel sender could not send data to receiving buffer.\n \
-                Original Error: {:?}, {:?}\n",
-                e, e.to_string()
-            )))
-        }
-        Ok(())
+        let _ = tx.send(body);
+        Ok(false)
     }
 
     /// Checks if the system should raise an error that the request
