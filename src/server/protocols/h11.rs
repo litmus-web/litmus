@@ -52,7 +52,6 @@
 
 use pyo3::prelude::*;
 use pyo3::exceptions;
-use pyo3::exceptions::PyRuntimeError;
 
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -139,7 +138,6 @@ impl RustProtocol {
         py: Python,
         data: &[u8],
     ) -> PyResult<()> {
-        println!("got {}", &data.len());
         self.add_data(py, data)?;
 
         // Send to receive and clear body if we have finished parsing.
@@ -350,7 +348,6 @@ impl RustProtocol {
         // the system will take before rejecting a request.
         self.parser_body.extend(data);
         if self.parser_body.len() >= HIGH_WATER_LIMIT {
-            println!("Pausing!");
             self.flow_control.pause_reading(py)?;
         }
 

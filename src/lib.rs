@@ -4,7 +4,10 @@ pub mod server;
 pub mod utils;
 
 use pyo3::prelude::*;
+use mimalloc::MiMalloc;
 
+#[global_allocator]
+static GLOBAL: MiMalloc = MiMalloc;
 
 ///
 /// Wraps all our existing pyobjects together in the module

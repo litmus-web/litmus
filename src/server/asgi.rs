@@ -143,7 +143,7 @@ impl SendStart {
 
 #[pyproto]
 impl PyAsyncProtocol for SendStart {
-    fn __await__(mut slf: PyRef<Self>) -> PyRef<Self> {
+    fn __await__(slf: PyRef<Self>) -> PyRef<Self> {
         slf
     }
 }
@@ -151,7 +151,7 @@ impl PyAsyncProtocol for SendStart {
 #[pyproto]
 impl PyIterProtocol for SendStart {
     fn __next__(
-        mut slf: PyRefMut<Self>
+        slf: PyRefMut<Self>
     ) -> PyResult<IterNextOutput<Option<PyObject>, Option<PyObject>>> {
         // Check so we dont screw everything if it's not initialised.
         if !slf.data.is_none() {
@@ -207,7 +207,7 @@ impl Receive {
 #[pymethods]
 impl Receive {
     #[call]
-    fn __call__(mut slf: &PyCell<Self>) -> &PyCell<Self> {
+    fn __call__(slf: &PyCell<Self>) -> &PyCell<Self> {
         slf
     }
 
@@ -251,8 +251,10 @@ impl PyIterProtocol for Receive {
             )))
         }
 
+        let py = slf.py();
+
         if !slf.pending {
-            slf.flow_control.resume_reading(slf.py())?;
+            slf.flow_control.resume_reading(py)?;
             slf.pending = true;
         }
 
@@ -265,7 +267,7 @@ impl PyIterProtocol for Receive {
         slf.pending = false;
 
 
-        let py_bytes = PyBytes::new(slf.py(), body.as_ref());
+        let py_bytes = PyBytes::new(py, body.as_ref());
         Ok(IterNextOutput::Return((
             HTTP_BODY_TYPE,
             Py::from(py_bytes),
