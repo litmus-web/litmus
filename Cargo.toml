@@ -16,6 +16,8 @@ features = ["extension-module"]
 httparse = "1.3.4"
 httpdate = "0.3"
 bytes = "0.6.0"
+
+# faster memory allocator, seems to help PyO3 a decent amount
 mimalloc = { version = "*", default-features = false }
 
 [profile.release]

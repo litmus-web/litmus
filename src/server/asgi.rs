@@ -1,3 +1,6 @@
+use pyo3::prelude::*;
+use pyo3::types::PyBytes;
+
 use std::collections::HashMap;
 use std::sync::{Arc, mpsc};
 use std::sync::atomic::AtomicBool;
@@ -6,24 +9,10 @@ use std::sync::atomic::Ordering::Relaxed;
 use bytes::{Bytes, BytesMut};
 use pyo3::{PyAsyncProtocol, PyIterProtocol};
 use pyo3::iter::IterNextOutput;
-///
-/// The asgi.rs file contains everything needed for interacting with the ASGI
-/// interface on Python's side communicating with the RustProtocols.
-///
-/// CHANGE_LOG:
-///     29/10/2020 - Add ASGIRunner struct with `new()` factory.
-///
-///     29/10/2020 - Add `Send` and `Receive` structs for callbacks.
-///
-/// TO_ADD:
-///     - All of the ASGI stuff.
-///
-
-use pyo3::prelude::*;
-use pyo3::types::PyBytes;
 
 use crate::server::flow_control::FlowControl;
 use crate::http;
+use crate::asyncio;
 
 const HTTP_DISCONNECT_TYPE: &'static str = "http.disconnect";
 const HTTP_BODY_TYPE: &'static str = "http.request";
@@ -118,6 +107,10 @@ struct SendStart {
     headers: Vec<(Vec<u8>, Vec<u8>)>,
     data: BytesMut,
     more_body: bool,
+
+    start_complete: bool,
+
+    state: usize,
 }
 
 impl SendStart {
@@ -133,6 +126,9 @@ impl SendStart {
             headers: Vec::new(),
             data: BytesMut::new(),
             more_body: true,
+            start_complete: false,
+
+            state: 0
         }
     }
 }
@@ -170,16 +166,25 @@ impl PyIterProtocol for SendStart {
         mut slf: PyRefMut<Self>
     ) -> PyResult<IterNextOutput<Option<PyObject>, Option<PyObject>>> {
 
-        if slf.status != 0 {
+        if (slf.status != 0) & !slf.start_complete {
             let body = http::format_response_start(
                 slf.status.clone(),
                 slf.headers.clone(),
             )?;
+
+            asyncio::write_transport(
+                slf.py(),
+                &slf.transport,
+                body.as_ref()
+            )?;
+
+            slf.start_complete = true;
+
+            asyncio::write_eof_transport(slf.py(), &slf.transport)?;
+            return Ok(IterNextOutput::Return(None))
         }
 
-
-
-
+        asyncio::close_transport(slf.py(), &slf.transport)?;
         Ok(IterNextOutput::Return(None))
     }
 }
