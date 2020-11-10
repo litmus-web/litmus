@@ -21,14 +21,11 @@ const HTTP_BODY_TYPE: &'static str = "http.request";
 #[pyclass]
 pub struct ASGIRunner {
     callback: PyObject,
-    transport: Arc<PyObject>,
     future: PyObject,  // the actual awaited task
 
     method: String,
     raw_path: Bytes,
     headers: HashMap<Bytes, Bytes>,
-
-    flow_control: Arc<FlowControl>,
 }
 
 impl ASGIRunner {
@@ -62,16 +59,12 @@ impl ASGIRunner {
         Ok(ASGIRunner {
             // set systems
             callback,
-            transport,
             future,
 
             // Parsed details
             method,
             raw_path,
             headers,
-
-            // Body streamer
-            flow_control,
         })
     }
 }
@@ -180,7 +173,7 @@ impl PyIterProtocol for SendStart {
 
             slf.start_complete = true;
 
-            asyncio::write_eof_transport(slf.py(), &slf.transport)?;
+            // asyncio::write_eof_transport(slf.py(), &slf.transport)?;
             return Ok(IterNextOutput::Return(None))
         }
 
