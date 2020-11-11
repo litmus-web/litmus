@@ -98,7 +98,7 @@ struct SendStart {
 
     status: u16,
     headers: Vec<(Vec<u8>, Vec<u8>)>,
-    data: BytesMut,
+    body: BytesMut,
     more_body: bool,
 
     start_complete: bool,
@@ -117,7 +117,7 @@ impl SendStart {
 
             status: 0,
             headers: Vec::new(),
-            data: BytesMut::new(),
+            body: BytesMut::new(),
             more_body: true,
             start_complete: false,
 
@@ -139,7 +139,7 @@ impl SendStart {
 
         slf.status = status;
         slf.headers = headers;
-        slf.data.extend(data);
+        slf.body.extend(data);
         slf.more_body = more_body;
 
         Ok(slf)
@@ -172,10 +172,14 @@ impl PyIterProtocol for SendStart {
             )?;
 
             slf.start_complete = true;
-
-            // asyncio::write_eof_transport(slf.py(), &slf.transport)?;
             return Ok(IterNextOutput::Return(None))
         }
+
+        asyncio::write_transport(
+            slf.py(),
+            &slf.transport,
+            slf.body.as_ref()
+        )?;
 
         asyncio::close_transport(slf.py(), &slf.transport)?;
         Ok(IterNextOutput::Return(None))
@@ -271,12 +275,9 @@ impl PyIterProtocol for Receive {
 
         slf.pending = false;
 
-        let py_bytes = PyBytes::new(slf.py(), body.as_ref());
-
-
         Ok(IterNextOutput::Return((
             HTTP_BODY_TYPE,
-            Py::from(py_bytes),
+            Py::from(PyBytes::new(slf.py(), body.as_ref())),
             slf.more_body.load(Relaxed)
         )))
     }

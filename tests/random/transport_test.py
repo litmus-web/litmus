@@ -6,15 +6,19 @@ async def tet(send, recv):
     await send(
         200,
         [
+            (b"transfer-encoding", b"chunked"),
             (b"content-type", b"text/html; charset=UTF-8"),
-            (b"content-length", b"0"),
-            (b"connection", b"close"),
         ],
         b"",
-        False,
+        True,
     )
 
-    await asyncio.sleep(0.5)
+    await send(
+        0,
+        [],
+        b"0\r\n\r\n",
+        False,
+    )
 
 
 host = "0.0.0.0"
