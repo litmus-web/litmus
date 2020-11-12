@@ -23,7 +23,6 @@ class HTTPProtocol(asyncio.Protocol):
                     or event is h11.NEED_DATA or event is h11.PAUSED
             ):
                 break
-            print("awww")
 
         if self.connection.our_state is h11.MUST_CLOSE:
             self.transport.close()

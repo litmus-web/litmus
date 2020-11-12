@@ -165,10 +165,13 @@ impl PyIterProtocol for SendStart {
                 slf.headers.clone(),
             )?;
 
+            let bod = Bytes::from(body);
+            println!("{:?}", &bod);
+
             asyncio::write_transport(
                 slf.py(),
                 &slf.transport,
-                body.as_ref()
+                bod.as_ref()
             )?;
 
             slf.start_complete = true;

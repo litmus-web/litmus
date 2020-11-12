@@ -6,8 +6,9 @@ async def tet(send, recv):
     await send(
         200,
         [
-            (b"content-type", b"text/plain"),
-            (b"transfer-encoding", b"chunked"),
+            (b"content-type", b"text/html; charset=UTF-8"),
+            (b"content-length", b"0"),
+            (b"connection", b"close"),
         ],
         b"",
         True,
@@ -16,7 +17,7 @@ async def tet(send, recv):
     await send(
         0,
         [],
-        b"d\r\nhello world\r\n0\r\n\r\n",
+        b"",
         False,
     )
 

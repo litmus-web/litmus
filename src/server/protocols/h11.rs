@@ -255,7 +255,7 @@ impl RustProtocol {
             _ => return Ok(())
         };
         self.flow_control.disconnected.store(true, Relaxed);
-
+        self.flow_control.resume_writing();
 
         Ok(())
     }
