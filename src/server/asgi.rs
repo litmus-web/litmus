@@ -174,7 +174,7 @@ impl PyIterProtocol for SendStart {
             slf.start_complete = true;
             return Ok(IterNextOutput::Return(None))
         }
-        asyncio::write_eof_transport(slf.py(), &slf.transport)?;
+        asyncio::write_transport(slf.py(), &slf.transport, &slf.body.as_ref())?;
 
         // asyncio::close_transport(slf.py(), &slf.transport)?;
         Ok(IterNextOutput::Return(None))
