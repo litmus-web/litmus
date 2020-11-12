@@ -144,6 +144,14 @@ impl SendStart {
 
         Ok(slf)
     }
+
+    fn close(&self, py: Python) -> PyResult<PyObject> {
+        Ok(self.transport.call_method0(py, "close")?)
+    }
+
+    fn flush(&self, py: Python) -> PyResult<()> {
+        Ok(self.flow_control.resume_reading(py)?)
+    }
 }
 
 #[pyproto]
@@ -166,7 +174,6 @@ impl PyIterProtocol for SendStart {
             )?;
 
             let bod = Bytes::from(body);
-            println!("{:?}", &bod);
 
             asyncio::write_transport(
                 slf.py(),
@@ -175,11 +182,11 @@ impl PyIterProtocol for SendStart {
             )?;
 
             slf.start_complete = true;
+
             return Ok(IterNextOutput::Return(None))
         }
-        asyncio::write_transport(slf.py(), &slf.transport, &slf.body.as_ref())?;
 
-        // asyncio::close_transport(slf.py(), &slf.transport)?;
+        asyncio::write_transport(slf.py(), &slf.transport, &slf.body.as_ref())?;
         Ok(IterNextOutput::Return(None))
     }
 }

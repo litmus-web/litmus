@@ -250,12 +250,15 @@ impl RustProtocol {
         py: Python,
         _exc: PyObject
     ) -> PyResult<()>{
+        println!("wew");
         let transport_ref = match self.transport.as_ref() {
             Some(t) => t,
             _ => return Ok(())
         };
         self.flow_control.disconnected.store(true, Relaxed);
-        self.flow_control.resume_writing();
+
+
+
 
         Ok(())
     }

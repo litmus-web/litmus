@@ -2,12 +2,14 @@ import asyncio
 import h11
 
 
+loop = asyncio.get_event_loop()
+
+
 class HTTPProtocol(asyncio.Protocol):
     def __init__(self):
         self.connection = h11.Connection(h11.SERVER)
 
     def connection_made(self, transport):
-        print("wew")
         self.transport = transport
 
     def data_received(self, data):
@@ -37,10 +39,14 @@ class HTTPProtocol(asyncio.Protocol):
         self.send(response)
         self.send(h11.Data(data=body))
         self.send(h11.EndOfMessage())
+        loop.call_later(5, self.call_to_close)
 
     def send(self, event):
         data = self.connection.send(event)
         self.transport.write(data)
+
+    def call_to_close(self):
+        self.transport.close()
 
 
 async def main(host, port):
