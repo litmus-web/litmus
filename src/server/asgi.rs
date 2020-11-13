@@ -19,6 +19,51 @@ const HTTP_BODY_TYPE: &'static str = "http.request";
 
 
 #[pyclass]
+pub struct ASGIScope {
+    method: String,
+    raw_path: Py<PyBytes>,
+    headers: Vec<(Py<PyBytes>, Py<PyBytes>)>,
+}
+
+impl ASGIScope {
+    fn new(
+        py: Python,
+        method: String,
+        raw_path: Bytes,
+        headers: HashMap<Bytes, Bytes>,
+    ) -> Self {
+
+        let raw_path = Py::from(PyBytes::new(
+            py,
+            raw_path.as_ref()
+        ));
+
+        let headers: Vec<(Py<PyBytes>, Py<PyBytes>)> = headers
+            .iter()
+            .map(|(key, val)| {(
+                Py::from(PyBytes::new(
+                    py,
+                    key.as_ref()
+                )),
+
+                Py::from(PyBytes::new(
+                    py,
+                    val.as_ref()
+                )),
+            )})
+            .collect();
+
+        ASGIScope {
+            method,
+            raw_path,
+            headers,
+        }
+
+    }
+}
+
+
+#[pyclass]
 pub struct ASGIRunner {
     callback: PyObject,
     future: PyObject,  // the actual awaited task
@@ -43,7 +88,7 @@ impl ASGIRunner {
         receiver: mpsc::Receiver<BytesMut>,
     ) -> PyResult<Self> {
 
-        let send = SendStart::new(
+        let send = Send::new(
             flow_control.clone(),
             transport.clone(),
         );
@@ -92,7 +137,7 @@ impl PyAsyncProtocol for ASGIRunner {
 /// a pymethod giving us the same effect as a instance method callback.
 ///
 #[pyclass]
-struct SendStart {
+struct Send {
     flow_control: Arc<FlowControl>,
     transport: Arc<PyObject>,
 
@@ -106,12 +151,12 @@ struct SendStart {
     state: usize,
 }
 
-impl SendStart {
+impl Send {
     fn new(
         flow_control: Arc<FlowControl>,
         transport: Arc<PyObject>,
     ) -> Self {
-        SendStart {
+        Send {
             flow_control,
             transport,
 
@@ -127,7 +172,7 @@ impl SendStart {
 }
 
 #[pymethods]
-impl SendStart {
+impl Send {
     #[call]
     fn __call__(
         mut slf: PyRefMut<Self>,
@@ -159,14 +204,14 @@ impl SendStart {
 }
 
 #[pyproto]
-impl PyAsyncProtocol for SendStart {
+impl PyAsyncProtocol for Send {
     fn __await__(slf: PyRef<Self>) -> PyRef<Self> {
         slf
     }
 }
 
 #[pyproto]
-impl PyIterProtocol for SendStart {
+impl PyIterProtocol for Send {
     fn __next__(
         mut slf: PyRefMut<Self>
     ) -> PyResult<IterNextOutput<Option<PyObject>, Option<PyObject>>> {

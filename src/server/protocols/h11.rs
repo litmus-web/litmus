@@ -83,7 +83,7 @@ type TransportType = Arc<PyObject>;
 
 
 #[pyclass]
-pub struct RustProtocol {
+pub struct PyreProtocol {
     callback: PyObject,
     flow_control: FlowControlType,
     transport: Option<TransportType>,
@@ -98,14 +98,14 @@ pub struct RustProtocol {
 }
 
 #[pymethods]
-impl RustProtocol {
+impl PyreProtocol {
     #[new]
     pub fn new(
         py: Python,
         callback: PyObject,
     ) -> PyResult<Self> {
 
-        Ok(RustProtocol {
+        Ok(PyreProtocol {
             callback,
 
             flow_control: Arc::new(FlowControl::default(py)?),
@@ -296,7 +296,7 @@ impl RustProtocol {
 
 }
 
-impl RustProtocol {
+impl PyreProtocol {
     /// Takes the parsed request details method, path and headers
     /// and produces the ASGI handler task and callback channel.
     fn create_handler_task(

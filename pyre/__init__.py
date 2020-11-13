@@ -1,2 +1,4 @@
 from . import framework
-from .pyre import *
+
+from .server.dummy import *  # Wildcard type hinting
+from .pyre import *  # Overriding import

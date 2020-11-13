@@ -1,15 +1,5 @@
 import asyncio
 import pyre
-import time
-
-
-count = 0
-last_set = 0
-
-
-import logging
-
-logging.basicConfig(level=logging.DEBUG)
 
 
 loop = asyncio.get_event_loop()
@@ -36,15 +26,8 @@ async def tet(send, recv):
     send.flush()
 
 
-def factory():
-    global count, last_set
-
-    count += 1
-
-    # print(f"req no: {count}, time: {time.time() - last_set}")
-    last_set = time.time()
-
-    return pyre.RustProtocol(tet)
+def factory() -> pyre.PyreProtocol:
+    return pyre.PyreProtocol(tet)
 
 
 host = "0.0.0.0"
