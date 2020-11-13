@@ -145,13 +145,17 @@ impl SendStart {
         Ok(slf)
     }
 
-    fn close(&self, py: Python) -> PyResult<PyObject> {
-        Ok(self.transport.call_method0(py, "close")?)
+    fn close(&self, py: Python) -> PyResult<Option<PyObject>> {
+        if !self.flow_control.is_closing(py)? {
+            return Ok(Some(self.transport.call_method0(py, "close")?))
+        }
+        Ok(None)
     }
 
     fn flush(&self, py: Python) -> PyResult<()> {
         Ok(self.flow_control.resume_reading(py)?)
     }
+
 }
 
 #[pyproto]

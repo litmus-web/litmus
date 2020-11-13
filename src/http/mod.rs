@@ -1,6 +1,9 @@
 use pyo3::prelude::*;
 use pyo3::exceptions;
 
+use std::time::SystemTime;
+use httpdate::fmt_http_date;
+
 // 1xx codes
 static STATUS_100: &str = "100 Continue";
 static STATUS_101: &str = "101 Switching Protocol";
@@ -190,6 +193,15 @@ pub fn format_response_start(
 
     // First line containing protocol and Status
     let first_line = Vec::from(format!("HTTP/1.1 {}", status_line));
+    parts.push(first_line);
+
+    // Add the HTTP date
+    let date = Vec::from(format!("date: {}", fmt_http_date(SystemTime::now())));
+    parts.push(date);
+
+    // todo this should be static or settable
+    // Set the server name
+    let first_line = Vec::from("server: pyre");
     parts.push(first_line);
 
     let mut part: Vec<u8>;

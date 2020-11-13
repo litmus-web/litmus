@@ -250,8 +250,7 @@ impl RustProtocol {
         py: Python,
         _exc: PyObject
     ) -> PyResult<()>{
-        println!("wew");
-        let transport_ref = match self.transport.as_ref() {
+        let _ = match self.transport.as_ref() {
             Some(t) => t,
             _ => return Ok(())
         };
@@ -294,19 +293,7 @@ impl RustProtocol {
         self.flow_control.resume_writing()
     }
 
-    /// The callback given to `EventLoop.call_later()` which closes
-    /// the connection when the keep alive timeout has elapsed.
-    pub fn keep_alive_callback(&mut self, py: Python) -> PyResult<()> {
-        let transport_ref = match self.transport.as_ref() {
-            Some(t) => t,
-            _ => return Ok(())
-        };
 
-        if !self.flow_control.is_closing(py)? {
-            let _ = transport_ref.call_method0(py, "close")?;
-        }
-        Ok(())
-    }
 }
 
 impl RustProtocol {

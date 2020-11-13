@@ -7,6 +7,11 @@ count = 0
 last_set = 0
 
 
+import logging
+
+logging.basicConfig(level=logging.DEBUG)
+
+
 loop = asyncio.get_event_loop()
 
 
@@ -24,11 +29,10 @@ async def tet(send, recv):
     await send(
         0,
         [],
-        b"b\r\nhello world\r\n0\r\n\r\n",
+        b"d\r\nHello, World!\r\n0\r\n\r\n",
         False,
     )
-
-    loop.call_later(5, send.close)
+    asyncio.get_event_loop().call_later(5, send.close)
     send.flush()
 
 
