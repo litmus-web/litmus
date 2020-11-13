@@ -25,7 +25,7 @@ def fetch():
 @timeit(amount=10)
 async def fetch2():
     async with aiohttp.ClientSession() as sess:
-        async with sess.get("http://127.0.0.1") as r:
+        async with sess.get("http://127.0.0.1:5000") as r:
             r.raise_for_status()
 
 
