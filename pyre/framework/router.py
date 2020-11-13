@@ -127,7 +127,7 @@ def _compile_converter(
     converters_reversed = []
     for i, arg_name in enumerate(inspection.args[::-1]):
         annotation = inspection.annotations.get(arg_name)
-        if i < len(inspection.defaults):
+        if inspection.defaults is not None and i < len(inspection.defaults):
             default = inspection.defaults[::-1][i]
         else:
             default = NoDefault()
