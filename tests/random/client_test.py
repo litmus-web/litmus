@@ -1,6 +1,5 @@
 import aiohttp
 
-import requests
 import time
 import asyncio
 
@@ -17,16 +16,15 @@ def timeit(amount=1000):
     return deco
 
 
-@timeit(amount=10)
-def fetch():
-    requests.get("http://127.0.0.1")
+async def task(sess):
+    async with sess.get("http://127.0.0.1") as r:
+        r.raise_for_status()
 
 
 @timeit(amount=10)
 async def fetch2():
     async with aiohttp.ClientSession() as sess:
-        async with sess.get("http://127.0.0.1:5000") as r:
-            r.raise_for_status()
+        await asyncio.gather(*[task(sess) for _ in range(1000)])
 
 
 asyncio.run(fetch2())

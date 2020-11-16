@@ -20,18 +20,27 @@ async def tet(send, recv):
         0,
         [],
         b"d\r\nHello, World!\r\n0\r\n\r\n",
-        False,
+        True,
     )
     asyncio.get_event_loop().call_later(5, send.close)
     send.flush()
 
 
+import itertools
+
+counter = itertools.count(1, 1)
+
+
 def factory() -> pyre.PyreProtocol:
+    # print("req", next(counter), sep=" ")
     return pyre.PyreProtocol(tet)
 
 
 host = "0.0.0.0"
 port = 80
+
+
+
 
 
 async def main():

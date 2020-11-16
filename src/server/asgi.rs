@@ -224,6 +224,7 @@ impl PyIterProtocol for Send {
 
             let bod = Bytes::from(body);
 
+
             asyncio::write_transport(
                 slf.py(),
                 &slf.transport,
@@ -235,7 +236,12 @@ impl PyIterProtocol for Send {
             return Ok(IterNextOutput::Return(None))
         }
 
-        asyncio::write_transport(slf.py(), &slf.transport, &slf.body.as_ref())?;
+        asyncio::write_transport(
+            slf.py(),
+            &slf.transport,
+            &slf.body.as_ref()
+        )?;
+
         Ok(IterNextOutput::Return(None))
     }
 }

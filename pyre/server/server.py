@@ -5,7 +5,7 @@ import typing as t
 
 from ssl import SSLContext
 
-from pyre import PyreProtocol
+from ..pyre import PyreProtocol
 
 
 class PyreServer:
