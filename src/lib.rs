@@ -1,7 +1,5 @@
-pub mod asyncio;
-pub mod http;
 pub mod server;
-pub mod utils;
+
 
 use pyo3::prelude::*;
 use mimalloc::MiMalloc;
@@ -15,6 +13,6 @@ static GLOBAL: MiMalloc = MiMalloc;
 #[pymodule]
 fn pyre(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<server::protocols::h11::PyreProtocol>()?;
-    m.add_class::<server::asgi::ASGIScope>()?;
+    // m.add_class::<server::asgi::ASGIScope>()?;
     Ok(())
 }

@@ -2,8 +2,6 @@ use pyo3::prelude::*;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use crate::asyncio;
-
 pub struct FlowControl {
     pub transport: Arc<PyObject>,
     pub is_read_paused: AtomicBool,
@@ -21,18 +19,6 @@ impl FlowControl {
             waiting_for_continue: AtomicBool::from(false),
             disconnected: AtomicBool::from(false)
         }
-    }
-
-    pub fn default(py: Python) -> PyResult<Self> {
-        let loop_ = asyncio::get_loop(py)?;
-
-        Ok(FlowControl {
-            transport: Arc::new(loop_),
-            is_read_paused: Default::default(),
-            is_write_paused: Default::default(),
-            waiting_for_continue: Default::default(),
-            disconnected: Default::default(),
-        })
     }
 
     pub fn pause_writing(&self) {

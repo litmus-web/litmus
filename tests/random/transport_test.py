@@ -40,9 +40,6 @@ host = "0.0.0.0"
 port = 80
 
 
-
-
-
 async def main():
     loop = asyncio.get_event_loop()
     server = await loop.create_server(factory, host=host, port=port, backlog=1024)
