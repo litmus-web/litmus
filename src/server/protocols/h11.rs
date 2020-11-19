@@ -107,15 +107,21 @@ impl PyreProtocol {
 }
 
 impl PyreProtocol {
-    fn parse(&self, data: &[u8]) -> PyResult<()> {
+    fn parse(&mut self, data: &[u8]) -> PyResult<()> {
 
         let mut headers = [httparse::EMPTY_HEADER; MAX_HEADERS];
         let mut request = httparse::Request::new(&mut headers);
 
-        match request.parse(data) {
+        let status = match request.parse(data) {
             Ok(s) => s,
-            Err(e) => return Ok(())
+            Err(e) => return Ok(())  // todo handle
+        };
+
+        if status.is_partial() {
+            return Ok(())
         }
+
+
 
         Ok(())
     }
