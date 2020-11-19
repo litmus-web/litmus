@@ -1,13 +1,27 @@
 import asyncio
+from typing import Optional
+
 import h11
+import logging
+
+logging.basicConfig(level=logging.DEBUG)
 
 
-loop = asyncio.get_event_loop()
-
-
-class HTTPProtocol(asyncio.Protocol):
+class HTTPProtocol:
     def __init__(self):
         self.connection = h11.Connection(h11.SERVER)
+
+    def eof_received(self):
+        return
+
+    def connection_lost(self, exc: Optional[Exception]) -> None:
+        return
+
+    def pause_writing(self) -> None:
+        pass
+
+    def resume_writing(self) -> None:
+        pass
 
     def connection_made(self, transport):
         self.transport = transport
@@ -39,7 +53,7 @@ class HTTPProtocol(asyncio.Protocol):
         self.send(response)
         self.send(h11.Data(data=body))
         self.send(h11.EndOfMessage())
-        loop.call_later(5, self.call_to_close)
+        asyncio.get_event_loop().call_later(5, self.call_to_close)
 
     def send(self, event):
         data = self.connection.send(event)

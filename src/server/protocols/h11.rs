@@ -72,19 +72,29 @@ impl PyreProtocol {
     }
 
     /// called when the socket reaches the high water limit
-    fn pause_writing(&self) {
+    fn pause_writing(&self, py: Python) -> PyResult<()>{
+        let flow_control = match self.flow_control.as_ref() {
+            Some(fc) => fc,
+            _ => return Ok(())
+        };
 
+        flow_control.pause_reading(py)?;
+
+        Ok(())
     }
 
     /// called when the socket can start being written to again
     fn resume_writing(&self) {
+        let flow_control = match self.flow_control.as_ref() {
+            Some(fc) => fc,
+            _ => return
+        };
 
+        flow_control.pause_writing();
     }
-
-
-
-
 }
+
+
 
 
 
