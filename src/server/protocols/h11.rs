@@ -1,9 +1,17 @@
 use pyo3::prelude::*;
+use pyo3::exceptions::PyRuntimeError;
+use pyo3::types::PyBytes;
 
 use std::sync::Arc;
+use std::sync::mpsc;
+
+use bytes::{Bytes, BytesMut};
+
+use arrayvec::ArrayVec;
 
 use crate::server::flow_control::FlowControl;
-use bytes::Bytes;
+use test::test_main;
+
 
 const MAX_HEADERS: usize = 32;
 
@@ -29,7 +37,11 @@ pub struct PyreProtocol {
 
     // internal state
     parse_complete: bool,
+    expected_length: usize,
+    task_disconnected: bool,  // means the sender will fail on send if true
 
+    // storage
+    body_tx: Option<mpsc::SyncSender<Bytes>>,
 }
 
 #[pymethods]
@@ -47,6 +59,10 @@ impl PyreProtocol {
             flow_control: None,
 
             parse_complete: false,
+            expected_length: 0,
+            task_disconnected: false,
+
+            body_tx: None,
         })
     }
 
@@ -74,13 +90,20 @@ impl PyreProtocol {
     }
 
     /// Received data from the socket
-    fn data_received(&self, data: &[u8]) {
+    fn data_received(&mut self, py: Python, data: &[u8]) -> PyResult<()> {
+        if self.task_disconnected {
+            return Err(PyRuntimeError::new_err(
+                "The asgi task has ended while the server is still receiving data."
+            ))
+        }
+
         if !self.parse_complete {
-            self.parse(data)?;
+            self.parse(py, data)?;
         } else {
             self.on_body(data)?;
         }
 
+        Ok(())
     }
 
     /// called when the socket reaches the high water limit
@@ -107,30 +130,94 @@ impl PyreProtocol {
 }
 
 impl PyreProtocol {
-    fn parse(&mut self, data: &[u8]) -> PyResult<()> {
+    fn parse(&mut self, py: Python, data: &[u8]) -> PyResult<()> {
 
         let mut headers = [httparse::EMPTY_HEADER; MAX_HEADERS];
         let mut request = httparse::Request::new(&mut headers);
 
         let status = match request.parse(data) {
             Ok(s) => s,
-            Err(e) => return Ok(())  // todo handle
+            Err(e) => return Err(PyRuntimeError::new_err(format!(
+                "{:?}", e
+            )))
         };
 
         if status.is_partial() {
             return Ok(())
         }
 
+        // Converts and checks headers for content length specifiers
+        let mut headers = ArrayVec::<[(Py<PyBytes>, Py<PyBytes>); MAX_HEADERS]>::new();
+        for header in request.headers {
+            if header.name == "content-length" {
+                self.expected_length = String::from_utf8_lossy(&header.value)
+                    .parse()
+                    .unwrap_or_else(|_|0);
+            }
 
+
+            let name = Py::from(PyBytes::new(
+                py,
+                header.name.as_bytes()
+            ));
+
+            let value = Py::from(PyBytes::new(
+                py,
+                header.value
+            ));
+
+            headers.push((name, value))
+        }
+
+        // Get the path of the request
+        let path = Py::from(PyBytes::new(
+            py,
+            request.path.unwrap_or("/").as_bytes()
+        ));
+
+        // This should never error default to the or values
+        let method = String::from(request.method.unwrap_or("GET"));
+        let version = request.version.unwrap_or(1);
+
+        self.on_parse_complete(
+            py,
+            version,
+            path,
+            method,
+            headers,
+        )?;
+
+        let (_, body) = data.split_at(status.unwrap());
+        self.on_body(body)?;
 
         Ok(())
     }
 
-    fn on_parse_complete(&self) {
+    fn on_parse_complete(
+        &self,
+        py: Python,
+        version: u8,
+        path: Py<PyBytes>,
+        method: String,
+        headers: ArrayVec<[(Py<PyBytes>, Py<PyBytes>); MAX_HEADERS]>,
+    ) -> PyResult<()> {
 
     }
 
-    fn on_body(&self, body: &[u8]) -> PyResult<()> {
+    fn on_body(&mut self, body: &[u8]) -> PyResult<()> {
+        // This should never reasonably error unless everything is one fire.
+        let tx = match self.body_tx.as_ref() {
+            Some(t) => t,
+            _ => return Err(PyRuntimeError::new_err(
+                "Unexpected NoneType found when unwrapping sender channel."
+            ))
+        };
+
+        let body = Bytes::copy_from_slice(body);
+
+        if let Err(_) = tx.send(body) {
+            self.task_disconnected = true
+        }
 
         Ok(())
     }
