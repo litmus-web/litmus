@@ -41,7 +41,8 @@ pub struct PyreProtocol {
     task_disconnected: bool,  // means the sender will fail on send if true
 
     // storage
-    body_tx: Option<mpsc::SyncSender<Bytes>>,
+    body_tx: Option<mpsc::SyncSender<BytesMut>>,
+    body: BytesMut,
 }
 
 #[pymethods]
@@ -63,6 +64,7 @@ impl PyreProtocol {
             task_disconnected: false,
 
             body_tx: None,
+            body: BytesMut::new(),
         })
     }
 
@@ -100,7 +102,8 @@ impl PyreProtocol {
         if !self.parse_complete {
             self.parse(py, data)?;
         } else {
-            self.on_body(data)?;
+            self.body.extend_from_slice(data);
+            self.on_body()?;
         }
 
         Ok(())
@@ -145,9 +148,12 @@ impl PyreProtocol {
         if status.is_partial() {
             return Ok(())
         }
+        self.parse_complete = true;
 
         // Converts and checks headers for content length specifiers
-        let mut headers = ArrayVec::<[(Py<PyBytes>, Py<PyBytes>); MAX_HEADERS]>::new();
+        let mut headers = {
+            ArrayVec::<[(Py<PyBytes>, Py<PyBytes>); MAX_HEADERS]>::new()
+        };
         for header in request.headers {
             if header.name == "content-length" {
                 self.expected_length = String::from_utf8_lossy(&header.value)
@@ -179,6 +185,7 @@ impl PyreProtocol {
         let method = String::from(request.method.unwrap_or("GET"));
         let version = request.version.unwrap_or(1);
 
+        // Submit the complete callback
         self.on_parse_complete(
             py,
             version,
@@ -187,12 +194,17 @@ impl PyreProtocol {
             headers,
         )?;
 
+        // Handle the remaining body
         let (_, body) = data.split_at(status.unwrap());
-        self.on_body(body)?;
+        self.body.extend_from_slice(body);
+        self.on_body()?;
 
         Ok(())
     }
 
+    /// Called only once when the data has been parsed into headers, etc...
+    /// this should always be in charge of creating the tasks and channels
+    /// needed for the on_body callback to work.
     fn on_parse_complete(
         &self,
         py: Python,
@@ -204,7 +216,12 @@ impl PyreProtocol {
 
     }
 
-    fn on_body(&mut self, body: &[u8]) -> PyResult<()> {
+    /// Called when ever data is received and the sending transmitter is
+    /// able to send unless it is the first time calling it.
+    ///
+    /// This is invoked *after* on_parse_complete is called giving time
+    /// to initialise the sender and receiver along with any tasks
+    fn on_body(&mut self) -> PyResult<()> {
         // This should never reasonably error unless everything is one fire.
         let tx = match self.body_tx.as_ref() {
             Some(t) => t,
@@ -213,9 +230,7 @@ impl PyreProtocol {
             ))
         };
 
-        let body = Bytes::copy_from_slice(body);
-
-        if let Err(_) = tx.send(body) {
+        if let Err(_) = tx.send(self.body.clone()) {
             self.task_disconnected = true
         }
 
