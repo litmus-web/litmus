@@ -3,6 +3,7 @@ use pyo3::prelude::*;
 use std::sync::Arc;
 
 use crate::server::flow_control::FlowControl;
+use bytes::Bytes;
 
 const MAX_HEADERS: usize = 32;
 
@@ -16,13 +17,18 @@ const CHANNEL_BUFFER_SIZE: usize = 10;
 const KEEP_ALIVE_TIMEOUT: usize = 5;
 
 
+
 #[pyclass]
 pub struct PyreProtocol {
+    // Python callbacks
     callback: PyObject,
 
+    // transport management
     transport: Option<Arc<PyObject>>,
     flow_control: Option<Arc<FlowControl>>,
 
+    // internal state
+    parse_complete: bool,
 
 }
 
@@ -39,6 +45,8 @@ impl PyreProtocol {
 
             transport: None,
             flow_control: None,
+
+            parse_complete: false,
         })
     }
 
@@ -67,8 +75,12 @@ impl PyreProtocol {
 
     /// Received data from the socket
     fn data_received(&self, data: &[u8]) {
-        let mut headers = [httparse::EMPTY_HEADER; MAX_HEADERS];
-        let parser = httparse::Request::new(&mut headers);
+        if !self.parse_complete {
+            self.parse(data)?;
+        } else {
+            self.on_body(data)?;
+        }
+
     }
 
     /// called when the socket reaches the high water limit
@@ -91,6 +103,30 @@ impl PyreProtocol {
         };
 
         flow_control.pause_writing();
+    }
+}
+
+impl PyreProtocol {
+    fn parse(&self, data: &[u8]) -> PyResult<()> {
+
+        let mut headers = [httparse::EMPTY_HEADER; MAX_HEADERS];
+        let mut request = httparse::Request::new(&mut headers);
+
+        match request.parse(data) {
+            Ok(s) => s,
+            Err(e) => return Ok(())
+        }
+
+        Ok(())
+    }
+
+    fn on_parse_complete(&self) {
+
+    }
+
+    fn on_body(&self, body: &[u8]) -> PyResult<()> {
+
+        Ok(())
     }
 }
 
