@@ -5,12 +5,12 @@ use pyo3::types::PyBytes;
 use std::sync::Arc;
 use std::sync::mpsc;
 
-use bytes::{Bytes, BytesMut};
+use bytes::BytesMut;
 
 use arrayvec::ArrayVec;
 
 use crate::server::flow_control::FlowControl;
-use test::test_main;
+use std::borrow::Borrow;
 
 
 const MAX_HEADERS: usize = 32;
@@ -29,7 +29,6 @@ const KEEP_ALIVE_TIMEOUT: usize = 5;
 #[pyclass]
 pub struct PyreProtocol {
     // Python callbacks
-    callback: PyObject,
 
     // transport management
     transport: Option<Arc<PyObject>>,
@@ -38,6 +37,7 @@ pub struct PyreProtocol {
     // internal state
     parse_complete: bool,
     expected_length: usize,
+    response_complete: bool,
     task_disconnected: bool,  // means the sender will fail on send if true
 
     // storage
@@ -50,17 +50,15 @@ impl PyreProtocol {
     #[new]
     pub fn new(
         py: Python,
-        callback: PyObject,
     ) -> PyResult<Self> {
 
         Ok(PyreProtocol {
-            callback,
-
             transport: None,
             flow_control: None,
 
             parse_complete: false,
             expected_length: 0,
+            response_complete: false,
             task_disconnected: false,
 
             body_tx: None,
@@ -93,18 +91,18 @@ impl PyreProtocol {
 
     /// Received data from the socket
     fn data_received(&mut self, py: Python, data: &[u8]) -> PyResult<()> {
-        if self.task_disconnected {
+        if self.task_disconnected & !self.response_complete {
             return Err(PyRuntimeError::new_err(
                 "The asgi task has ended while the server is still receiving data."
             ))
         }
 
-        if !self.parse_complete {
-            self.parse(py, data)?;
-        } else {
-            self.body.extend_from_slice(data);
+        self.body.extend_from_slice(data);
+        // if !self.parse_complete {
+            self.parse(py)?;
+        // } else {
             self.on_body()?;
-        }
+        // }
 
         Ok(())
     }
@@ -133,12 +131,12 @@ impl PyreProtocol {
 }
 
 impl PyreProtocol {
-    fn parse(&mut self, py: Python, data: &[u8]) -> PyResult<()> {
+    fn parse(&mut self, py: Python) -> PyResult<()> {
 
         let mut headers = [httparse::EMPTY_HEADER; MAX_HEADERS];
         let mut request = httparse::Request::new(&mut headers);
 
-        let status = match request.parse(data) {
+        let status = match request.parse(self.body.as_ref()) {
             Ok(s) => s,
             Err(e) => return Err(PyRuntimeError::new_err(format!(
                 "{:?}", e
@@ -146,39 +144,39 @@ impl PyreProtocol {
         };
 
         if status.is_partial() {
-            return Ok(())
+             return Ok(())
         }
+
         self.parse_complete = true;
 
         // Converts and checks headers for content length specifiers
         let mut headers = {
-            ArrayVec::<[(Py<PyBytes>, Py<PyBytes>); MAX_HEADERS]>::new()
+             ArrayVec::<[(Py<PyBytes>, Py<PyBytes>); MAX_HEADERS]>::new()
         };
         for header in request.headers {
-            if header.name == "content-length" {
-                self.expected_length = String::from_utf8_lossy(&header.value)
-                    .parse()
-                    .unwrap_or_else(|_|0);
-            }
+           if header.name == "content-length" {
+               self.expected_length = String::from_utf8_lossy(&header.value)
+                   .parse()
+                   .unwrap_or_else(|_|0);
+           }
 
+           let name = Py::from(PyBytes::new(
+               py,
+               header.name.as_bytes()
+           ));
 
-            let name = Py::from(PyBytes::new(
-                py,
-                header.name.as_bytes()
-            ));
+           let value = Py::from(PyBytes::new(
+               py,
+               header.value
+           ));
 
-            let value = Py::from(PyBytes::new(
-                py,
-                header.value
-            ));
-
-            headers.push((name, value))
+           headers.push((name, value))
         }
 
         // Get the path of the request
-        let path = Py::from(PyBytes::new(
-            py,
-            request.path.unwrap_or("/").as_bytes()
+        let path: Py<PyBytes> = Py::from(PyBytes::new(
+           py,
+           request.path.unwrap_or("/").as_bytes()
         ));
 
         // This should never error default to the or values
@@ -195,10 +193,7 @@ impl PyreProtocol {
         )?;
 
         // Handle the remaining body
-        let (_, body) = data.split_at(status.unwrap());
-        self.body.extend_from_slice(body);
-        self.on_body()?;
-
+        self.body = self.body.split_off(status.unwrap());
         Ok(())
     }
 
@@ -206,7 +201,7 @@ impl PyreProtocol {
     /// this should always be in charge of creating the tasks and channels
     /// needed for the on_body callback to work.
     fn on_parse_complete(
-        &self,
+        &mut self,
         py: Python,
         version: u8,
         path: Py<PyBytes>,
@@ -214,6 +209,27 @@ impl PyreProtocol {
         headers: ArrayVec<[(Py<PyBytes>, Py<PyBytes>); MAX_HEADERS]>,
     ) -> PyResult<()> {
 
+        let transport = match self.transport.as_ref() {
+            Some(t) => t,
+            _ => return Err(PyRuntimeError::new_err("Transport was none on send"))
+        };
+
+        let data = "HTTP/1.1 200 OK\r\ncontent-type: text/plain\r\ntransfer-encoding: chunked\r\n\r\n";
+        let _ = transport.call_method1(
+            py, "write", (data.as_bytes(),)
+        )?;
+
+        let data = "d\r\nHello, world!\r\n0\r\n\r\n";
+        let _ = transport.call_method1(
+            py, "write", (data.as_bytes(),)
+        )?;
+
+        // let (sender, receiver) = mpsc::sync_channel(1);
+        // self.body_tx = Some(sender);
+
+        // self.response_complete = true;
+
+        Ok(())
     }
 
     /// Called when ever data is received and the sending transmitter is
@@ -222,6 +238,8 @@ impl PyreProtocol {
     /// This is invoked *after* on_parse_complete is called giving time
     /// to initialise the sender and receiver along with any tasks
     fn on_body(&mut self) -> PyResult<()> {
+        return Ok(());
+
         // This should never reasonably error unless everything is one fire.
         let tx = match self.body_tx.as_ref() {
             Some(t) => t,
@@ -230,10 +248,12 @@ impl PyreProtocol {
             ))
         };
 
-        if let Err(_) = tx.send(self.body.clone()) {
-            self.task_disconnected = true
+        if let Ok(_) = tx.send(self.body.clone()) {
+            self.body.clear();
+            return Ok(())
         }
 
+        self.task_disconnected = true;
         Ok(())
     }
 }
