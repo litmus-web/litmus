@@ -8,8 +8,10 @@ logging.basicConfig(level=logging.DEBUG)
 class HTTPProtocol(asyncio.Protocol):
     def __init__(self):
         self.transport: t.Optional[asyncio.Transport] = None
+        print("making")
 
     def connection_made(self, transport: asyncio.Protocol) -> None:
+        print("connection")
         self.transport = transport
 
     def data_received(self, data: bytes) -> None:

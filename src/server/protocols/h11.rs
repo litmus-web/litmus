@@ -203,25 +203,12 @@ impl PyreProtocol {
         method: String,
         headers: ArrayVec<[(Py<PyBytes>, Py<PyBytes>); MAX_HEADERS]>,
     ) -> PyResult<()> {
-        let transport = match self.transport.as_ref() {
-            Some(t) => t,
-            _ => return Err(PyRuntimeError::new_err("Transport was none on send"))
-        };
-
-        let data = "HTTP/1.1 200 OK\r\ncontent-type: text/plain\r\ntransfer-encoding: chunked\r\n\r\n";
-        let _ = transport.call_method1(
-            py, "write", (data.as_bytes(),)
-        )?;
-
-        let data = "d\r\nHello, world!\r\n0\r\n\r\n";
-        let _ = transport.call_method1(
-            py, "write", (data.as_bytes(),)
-        )?;
-
         let (sender, receiver) = {
             mpsc::sync_channel(10)
         };
         self.body_tx = Some(sender);
+
+
 
         Ok(())
     }
