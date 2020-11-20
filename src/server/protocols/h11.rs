@@ -10,7 +10,6 @@ use bytes::BytesMut;
 use arrayvec::ArrayVec;
 
 use crate::server::flow_control::FlowControl;
-use std::borrow::Borrow;
 
 
 const MAX_HEADERS: usize = 32;
@@ -35,7 +34,7 @@ pub struct PyreProtocol {
     flow_control: Option<Arc<FlowControl>>,
 
     // internal state
-    parse_complete: bool,
+    needs_to_parse: bool,
     expected_length: usize,
     response_complete: bool,
     task_disconnected: bool,  // means the sender will fail on send if true
@@ -48,16 +47,13 @@ pub struct PyreProtocol {
 #[pymethods]
 impl PyreProtocol {
     #[new]
-    pub fn new(
-        py: Python,
-    ) -> PyResult<Self> {
-
+    pub fn new() -> PyResult<Self> {
         Ok(PyreProtocol {
             transport: None,
             flow_control: None,
 
-            parse_complete: false,
             expected_length: 0,
+            needs_to_parse: true,
             response_complete: false,
             task_disconnected: false,
 
@@ -68,7 +64,6 @@ impl PyreProtocol {
 
     /// Called when the connection is first established
     fn connection_made(&mut self, transport: PyObject) {
-
         let transport = Arc::new(transport);
         let flow_control = Arc::new(FlowControl::new(
             transport.clone()
@@ -98,11 +93,11 @@ impl PyreProtocol {
         }
 
         self.body.extend_from_slice(data);
-        // if !self.parse_complete {
+
+        if self.needs_to_parse {
             self.parse(py)?;
-        // } else {
-            self.on_body()?;
-        // }
+        }
+        self.on_body(py)?;
 
         Ok(())
     }
@@ -147,7 +142,7 @@ impl PyreProtocol {
              return Ok(())
         }
 
-        self.parse_complete = true;
+        self.needs_to_parse = false;
 
         // Converts and checks headers for content length specifiers
         let mut headers = {
@@ -208,7 +203,6 @@ impl PyreProtocol {
         method: String,
         headers: ArrayVec<[(Py<PyBytes>, Py<PyBytes>); MAX_HEADERS]>,
     ) -> PyResult<()> {
-
         let transport = match self.transport.as_ref() {
             Some(t) => t,
             _ => return Err(PyRuntimeError::new_err("Transport was none on send"))
@@ -224,10 +218,10 @@ impl PyreProtocol {
             py, "write", (data.as_bytes(),)
         )?;
 
-        // let (sender, receiver) = mpsc::sync_channel(1);
-        // self.body_tx = Some(sender);
-
-        // self.response_complete = true;
+        let (sender, receiver) = {
+            mpsc::sync_channel(10)
+        };
+        self.body_tx = Some(sender);
 
         Ok(())
     }
@@ -237,9 +231,7 @@ impl PyreProtocol {
     ///
     /// This is invoked *after* on_parse_complete is called giving time
     /// to initialise the sender and receiver along with any tasks
-    fn on_body(&mut self) -> PyResult<()> {
-        return Ok(());
-
+    fn on_body(&mut self, py: Python) -> PyResult<()> {
         // This should never reasonably error unless everything is one fire.
         let tx = match self.body_tx.as_ref() {
             Some(t) => t,
@@ -254,7 +246,21 @@ impl PyreProtocol {
         }
 
         self.task_disconnected = true;
+
+        self.reset_state();
         Ok(())
+    }
+
+    /// This is a required function that resets the state of the protocol
+    /// to be able to handle new connections due to asyncio's recycling.
+    fn reset_state(&mut self) {
+        self.expected_length = 0;
+        self.needs_to_parse = true;
+        self.response_complete = false;
+        self.task_disconnected = false;
+
+        self.body_tx = None;
+        self.body.clear();
     }
 }
 

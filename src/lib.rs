@@ -13,6 +13,5 @@ static GLOBAL: MiMalloc = MiMalloc;
 #[pymodule]
 fn pyre(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<server::protocols::h11::PyreProtocol>()?;
-    m.add_class::<server::protocols::h10::PyreProtocolTest>()?;
     Ok(())
 }
