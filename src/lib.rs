@@ -71,14 +71,21 @@ struct PyreListener {
 #[pymethods]
 impl PyreListener {
     #[new]
-    fn new(addr: &str) -> Self {
+    fn new(addr: &str) -> PyResult<Self> {
+        if CALLBACK.get().is_none() {
+            return Err(PyValueError::new_err(
+                "Global state has not be initialised, \
+                did you run 'pyre.setup(...)' first?"
+            ))
+        }
+
         let listener = TcpListener::bind(&addr).unwrap();
         listener.set_nonblocking(true).expect("Couldn't set non-blocking");
         println!("Serving Connections @ http://{}", addr);
 
-        PyreListener {
+        Ok(PyreListener {
             listener,
-        }
+        })
     }
 
     fn accept(&self) -> PyResult<PyreH11Client> {
@@ -97,7 +104,7 @@ impl PyreListener {
                     addr,
                 )
             }),
-            Err(_) =>  Err(PyBlockingIOError::new_err(""))
+            Err(_) =>  Err(PyBlockingIOError::new_err(()))
         };
     }
 
