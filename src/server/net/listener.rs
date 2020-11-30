@@ -95,9 +95,9 @@ impl PyreListener {
 /// never be made from python as this is purely a internal type.
 #[pyclass]
 pub struct PyreClientAddrPair {
-    client: TcpStream,
-    addr: SocketAddr,
-    callback: Arc<PyObject>,
+    pub client: TcpStream,
+    pub addr: SocketAddr,
+    pub callback: Arc<PyObject>,
 }
 
 #[pymethods]
@@ -107,12 +107,12 @@ impl PyreClientAddrPair {
     /// returned hence the configs.
     #[cfg(target_os = "windows")]
     fn fd(&self) -> u64 {
-        self.listener.as_raw_socket()
+        self.client.as_raw_socket()
     }
 
     #[cfg(target_os = "unix")]
     fn fd(&self) -> i32 {
-        self.listener.as_raw_fd()
+        self.client.as_raw_fd()
     }
 }
 
