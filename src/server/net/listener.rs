@@ -11,16 +11,12 @@ use std::sync::mpsc;
 use std::net::{TcpListener, TcpStream, SocketAddr};
 use std::io;
 use std::io::{Read, Write};
-use std::net::Shutdown::Both;
-use std::sync::atomic::AtomicBool;
-use std::sync::atomic::Ordering::Relaxed;
-
-use bytes::{BytesMut, BufMut};
 
 use once_cell::sync::OnceCell;
 
 #[cfg(target_os = "windows")]
 use std::os::windows::io::AsRawSocket;
+
 #[cfg(target_os = "unix")]
 use std::os::unix::io::AsRawFd;
 
@@ -91,6 +87,16 @@ impl PyreListener {
             client,
             addr,
         })
+    }
+
+    #[cfg(target_os = "windows")]
+    fn fd(&self) -> u64 {
+        self.listener.as_raw_socket()
+    }
+
+    #[cfg(target_os = "unix")]
+    fn fd(&self) -> i32 {
+        self.listener.as_raw_fd()
     }
 }
 
