@@ -48,7 +48,7 @@ impl H11Parser {
 
     pub fn feed_data(
         &mut self,
-        mut data: &BytesMut
+        mut data: &mut BytesMut
     ) -> Result<Option<Receiver<BytesMut>>, &'static str> {
 
         if self.expecting_request {
@@ -109,63 +109,28 @@ impl H11Parser {
         return if status.is_partial() {
             Ok(None)
         } else {
-            self.submit_request(request);
+            self.submit_request(request)?;
             Ok(Some(status.unwrap()))
         }
     }
 
-    fn process_headers(
-        &mut self,
-        request: &httparse::Request
-    ) -> Result<Vec<(Py<PyBytes>, Py<PyBytes>)>, &'static str> {
-
-        for header in request.headers {
-            match header.name.parse::<header::HeaderName>().unwrap() {
-                header::CONTENT_LENGTH => {
-                    let len = String::from_utf8_lossy(header.value);
-                    self.expected_length = match len.parse::<usize>() {
-                        Ok(n) => n,
-                        Err(_) => return Err("Invalid content length")
-                    };
-                    break;
-                },
-                header::TRANSFER_ENCODING => {
-                    let value = String::from_utf8_lossy(header.value)
-                        .to_lowercase();
-                    if value.contains("chunked") {
-                        self.chunked_encoding = true;
-                    };
-                    break;
-                }
-            };
-        }
-
-        let func = |py: Python| -> Vec<(Py<PyBytes>, Py<PyBytes>)> {
-            let headers: Vec<(Py<PyBytes>, Py<PyBytes>)> = request.headers
-                .iter()
-                .map(|header| (
-                    Py::from(PyBytes::new(py, header.name.as_bytes())),
-                    Py::from(PyBytes::new(py, header.value.bytes())),
-                    ))
-                .collect();
-
-            headers
-        };
-
-        Ok(Python::with_gil(func))
-    }
-
-    fn submit_request(&mut self, request: httparse::Request) {
-        let headers = self.process_headers(&request)?;
-
+    fn submit_request(
+        &mut self, mut request: httparse::Request
+    ) -> Result<(), &'static str> {
         let path = request.path.unwrap_or("/");
         let (path, query) = match path.find("?") {
             Some(n) => path.split_at(n),
             _ => (path, "")
         };
 
+        let method = request.method.unwrap_or("GET").to_string();
+
+        let headers = Python::with_gil(
+            |py: Python| self.parse_headers(py, request)
+        )?;
+
         let req = Request {
-            method: request.method.unwrap_or("GET").to_string(),
+            method,
             path: path.to_string(),
             query: query.to_string(),
             headers
@@ -177,6 +142,42 @@ impl H11Parser {
             // something is massively broken.
             Err(_) => panic!("Channel was full upon sending.")
         }
+
+        Ok(())
+    }
+
+    fn parse_headers(
+        &mut self,
+        py: Python,
+        request: httparse::Request
+    ) -> Result<Vec<(Py<PyBytes>, Py<PyBytes>)>, &'static str> {
+        let mut new = Vec::new();
+        for req_header in request.headers {
+            match req_header.name.parse::<header::HeaderName>().unwrap() {
+                header::CONTENT_LENGTH => {
+                    let len = String::from_utf8_lossy(req_header.value);
+                    self.expected_length = match len.parse::<usize>() {
+                        Ok(n) => n,
+                        Err(_) => return Err("Invalid content length")
+                    };
+                },
+                header::TRANSFER_ENCODING => {
+                    let value = String::from_utf8_lossy(req_header.value)
+                        .to_lowercase();
+                    if value.contains("chunked") {
+                        self.chunked_encoding = true;
+                    };
+                }
+                _ => {},
+            };
+
+            new.push((
+                Py::from(PyBytes::new(py, req_header.name.as_bytes())),
+                Py::from(PyBytes::new(py, req_header.value.bytes())),
+            ));
+        }
+
+        Ok(new)
     }
 
     fn handle_body(&self) {
