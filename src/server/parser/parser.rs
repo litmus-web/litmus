@@ -2,15 +2,21 @@
 // can't upgrade yet
 #![allow(deprecated)]
 
-use pyo3::PyResult;
+use pyo3::prelude::*;
+use pyo3::types::PyBytes;
+
 use std::mem;
 use std::sync::mpsc::{
     Receiver,
     SyncSender,
     sync_channel,
 };
-use bytes::BytesMut;
+
+use serde::Serialize;
+
+use bytes::{BytesMut, Buf};
 use http::header;
+
 
 
 const MAX_HEADERS: usize = 48;
@@ -24,9 +30,20 @@ pub struct H11Parser {
 
     // Storage
     body_channel: Option<SyncSender<BytesMut>>,
+    request_channel: SyncSender<Request>,
 }
 
 impl H11Parser {
+    pub fn new(request_channel: SyncSender<Request>) -> Self {
+        H11Parser {
+            expecting_request: true,
+            chunked_encoding: false,
+            expected_length: 0,
+            body_channel: None,
+            request_channel,
+        }
+    }
+
     pub fn feed_data(
         &mut self,
         mut data: &BytesMut
@@ -54,12 +71,14 @@ impl H11Parser {
                         Err(_) => panic!("Channel was full upon sending.")
                     }
                 }
+
+                return Ok(Some(rx))
             }
 
 
         }
 
-        Ok(Some(BytesMut))
+        Ok(None)  // Get more data read to handle the next
     }
 
     fn reset_state(&mut self) {
@@ -88,12 +107,17 @@ impl H11Parser {
         return if status.is_partial() {
             Ok(None)
         } else {
-            self.handle_request(request)?;
+            let headers = self.process_headers(request)?;
+            self.submit_request(headers);
             Ok(Some(status.unwrap()))
         }
     }
 
-    fn handle_request(&mut self, request: httparse::Request) -> Result<(), &'static str> {
+    fn process_headers(
+        &mut self,
+        request: httparse::Request
+    ) -> Result<Vec<(Py<PyBytes>, Py<PyBytes>)>, &'static str> {
+
         for header in request.headers {
             match header.name.parse::<header::HeaderName>().unwrap() {
                 header::CONTENT_LENGTH => {
@@ -109,14 +133,46 @@ impl H11Parser {
                         .to_lowercase();
                     if value.contains("chunked") {
                         self.chunked_encoding = true;
-                    }
+                    };
                     break;
                 }
-            }
+            };
         }
 
-        Ok(())
+        let func = |py: Python| -> Vec<(Py<PyBytes>, Py<PyBytes>)> {
+            let headers: Vec<(Py<PyBytes>, Py<PyBytes>)> = request.headers
+                .iter()
+                .map(|header| (
+                    Py::from(PyBytes::new(py, header.name.as_bytes())),
+                    Py::from(PyBytes::new(py, header.value.bytes())),
+                    ))
+                .collect();
+
+            headers
+        };
+
+        Ok(Python::with_gil(func))
     }
 
-    fn handle_body(&self) {}
+    fn submit_request(&self, headers: Vec<(Py<PyBytes>, Py<PyBytes>)>) {
+        let req = Request {
+            headers
+        };
+
+        match self.request_channel.try_send(req) {
+            Ok(_) => {},
+            // This should never ever happen unless
+            // something is massively broken.
+            Err(_) => panic!("Channel was full upon sending.")
+        }
+    }
+
+    fn handle_body(&self) {
+
+    }
+}
+
+#[derive(Serialize)]
+pub struct Request {
+    pub headers: Vec<(Py<PyBytes>, Py<PyBytes>)>
 }
