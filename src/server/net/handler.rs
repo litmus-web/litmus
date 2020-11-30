@@ -5,14 +5,13 @@
 use pyo3::prelude::*;
 use pyo3::exceptions::{PyRuntimeError, PyIOError};
 
-use std::{io, mem};
+use std::io;
 use std::sync::Arc;
 use std::mem::MaybeUninit;
 use std::sync::atomic::Ordering::Relaxed;
 use std::net::Shutdown::Both;
 use std::sync::atomic::AtomicBool;
 use std::io::{Write, Read};
-use std::num::ParseIntError;
 
 use bytes::{BytesMut, BufMut};
 use once_cell::sync::OnceCell;

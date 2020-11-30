@@ -12,10 +12,12 @@ use std::sync::mpsc::{
     sync_channel,
 };
 
-use serde::Serialize;
-
 use bytes::{BytesMut, Buf};
-use http::header;
+
+use http::{
+    header,
+    uri,
+};
 
 
 
@@ -107,15 +109,14 @@ impl H11Parser {
         return if status.is_partial() {
             Ok(None)
         } else {
-            let headers = self.process_headers(request)?;
-            self.submit_request(headers);
+            self.submit_request(request);
             Ok(Some(status.unwrap()))
         }
     }
 
     fn process_headers(
         &mut self,
-        request: httparse::Request
+        request: &httparse::Request
     ) -> Result<Vec<(Py<PyBytes>, Py<PyBytes>)>, &'static str> {
 
         for header in request.headers {
@@ -154,8 +155,19 @@ impl H11Parser {
         Ok(Python::with_gil(func))
     }
 
-    fn submit_request(&self, headers: Vec<(Py<PyBytes>, Py<PyBytes>)>) {
+    fn submit_request(&mut self, request: httparse::Request) {
+        let headers = self.process_headers(&request)?;
+
+        let path = request.path.unwrap_or("/");
+        let (path, query) = match path.find("?") {
+            Some(n) => path.split_at(n),
+            _ => (path, "")
+        };
+
         let req = Request {
+            method: request.method.unwrap_or("GET").to_string(),
+            path: path.to_string(),
+            query: query.to_string(),
             headers
         };
 
@@ -172,7 +184,10 @@ impl H11Parser {
     }
 }
 
-#[derive(Serialize)]
+
 pub struct Request {
-    pub headers: Vec<(Py<PyBytes>, Py<PyBytes>)>
+    pub method: String,
+    pub path: String,
+    pub query: String,
+    pub headers: Vec<(Py<PyBytes>, Py<PyBytes>)>,
 }
