@@ -2,15 +2,10 @@
 use pyo3::prelude::*;
 
 // Pyo3 stable stuffs
-use pyo3::exceptions::{PyBlockingIOError, PyIOError, PyValueError, PyConnectionError, PyRuntimeError};
-use pyo3::{wrap_pyfunction, PyAsyncProtocol, PyIterProtocol, AsPyPointer};
-use pyo3::class::iter::{IterNextOutput};
+use pyo3::exceptions::{PyBlockingIOError, PyRuntimeError, PyConnectionError, PyNotImplementedError};
 
-use std::sync::Arc;
-use std::sync::mpsc;
 use std::net::{TcpListener, TcpStream, SocketAddr};
 use std::io;
-use std::io::{Read, Write};
 
 use once_cell::sync::OnceCell;
 
@@ -25,18 +20,18 @@ static LOOP_ADD_READER: OnceCell<PyObject> = OnceCell::new();
 static LOOP_REMOVE_READER: OnceCell<PyObject> = OnceCell::new();
 
 
+/// This sets up the net package's global state, this is absolutely required
+/// to stop large amounts of python calls and clones, this MUST be setup before
+/// any listeners can be created otherwise you risk UB.
 pub fn setup(loop_add_reader: PyObject, loop_remove_reader: PyObject) {
     LOOP_ADD_READER.get_or_init(|| loop_add_reader);
     LOOP_REMOVE_READER.get_or_init(|| loop_remove_reader);
 }
 
-
+/// This is the main listener type, built off of a Rust based TcpListener
 #[pyclass]
 pub struct PyreListener {
     listener: TcpListener,
-    free_objects: Vec<PyreClientAddrPair>,
-    used_objects: Vec<PyreClientAddrPair>,
-    backlog: usize,
 }
 
 #[pymethods]
@@ -45,8 +40,14 @@ impl PyreListener {
     fn new(
         host: &str,
         port: u16,
-        backlog: usize,
     ) -> PyResult<Self> {
+        if let _ = LOOP_ADD_READER.get().is_none() {
+            return Err(PyRuntimeError::new_err(
+                "Global state has not been setup, \
+                did you forget to call pyre.setup()?"
+            ))
+        }
+
 
         let addr = format!("{}:{}", host, port);
         let listener = match TcpListener::bind(&addr) {
@@ -64,13 +65,12 @@ impl PyreListener {
 
         Ok(PyreListener {
             listener,
-            backlog,
-
-            free_objects: Vec::with_capacity(1024),
-            used_objects: Vec::with_capacity(1024),
         })
     }
 
+    /// Accepts a single client returning a internal pair for handling,
+    /// ideally would be nice to have all of this be internal however the
+    /// limitation of lifetimes and threadsafety make this rather hard.
     fn accept(&mut self) -> PyResult<PyreClientAddrPair> {
         let (client, addr) = match self.listener.accept() {
             Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
@@ -89,6 +89,9 @@ impl PyreListener {
         })
     }
 
+    /// This is equivalent to python's socket.fileno()
+    /// depending on what platform you are on will affect what is
+    /// returned hence the configs.
     #[cfg(target_os = "windows")]
     fn fd(&self) -> u64 {
         self.listener.as_raw_socket()
@@ -101,8 +104,19 @@ impl PyreListener {
 }
 
 
+/// This is purely a internal type that handles the client and addr pair
+/// that the handlers can then use to interact with the socket, this should
+/// never be made from python as this is purely a internal type.
 #[pyclass]
 pub struct PyreClientAddrPair {
     client: TcpStream,
     addr: SocketAddr,
+}
+
+impl FromPyObject<'_> for PyreClientAddrPair {
+    fn extract(ob: &PyAny) -> PyResult<Self> {
+        Err(PyNotImplementedError::new_err(
+            "Client pairs are a internal type and should not be made."
+        ))
+    }
 }
