@@ -14,8 +14,16 @@ use server::net::handler;
 
 
 #[pyfunction]
-fn setup(loop_add_reader: PyObject, loop_remove_reader: PyObject) {
-    listener::setup(loop_add_reader, loop_remove_reader);
+fn setup(
+    loop_create_task: PyObject,
+    loop_remove_reader: PyObject,
+    loop_remove_writer: PyObject,
+) {
+    handler::setup(
+        loop_create_task,
+        loop_remove_reader,
+        loop_remove_writer,
+    );
 }
 
 

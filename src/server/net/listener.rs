@@ -14,40 +14,24 @@ use std::os::windows::io::AsRawSocket;
 
 #[cfg(target_os = "unix")]
 use std::os::unix::io::AsRawFd;
+use std::sync::Arc;
 
-
-static LOOP_ADD_READER: OnceCell<PyObject> = OnceCell::new();
-static LOOP_REMOVE_READER: OnceCell<PyObject> = OnceCell::new();
-
-
-/// This sets up the net package's global state, this is absolutely required
-/// to stop large amounts of python calls and clones, this MUST be setup before
-/// any listeners can be created otherwise you risk UB.
-pub fn setup(loop_add_reader: PyObject, loop_remove_reader: PyObject) {
-    LOOP_ADD_READER.get_or_init(|| loop_add_reader);
-    LOOP_REMOVE_READER.get_or_init(|| loop_remove_reader);
-}
 
 /// This is the main listener type, built off of a Rust based TcpListener
 #[pyclass]
 pub struct PyreListener {
     listener: TcpListener,
+    callback: Arc<PyObject>
 }
 
 #[pymethods]
 impl PyreListener {
     #[new]
     fn new(
+        callback: PyObject,
         host: &str,
         port: u16,
     ) -> PyResult<Self> {
-        if let _ = LOOP_ADD_READER.get().is_none() {
-            return Err(PyRuntimeError::new_err(
-                "Global state has not been setup, \
-                did you forget to call pyre.setup()?"
-            ))
-        }
-
 
         let addr = format!("{}:{}", host, port);
         let listener = match TcpListener::bind(&addr) {
@@ -65,6 +49,7 @@ impl PyreListener {
 
         Ok(PyreListener {
             listener,
+            callback: Arc::new(callback)
         })
     }
 
@@ -86,6 +71,7 @@ impl PyreListener {
         Ok(PyreClientAddrPair{
             client,
             addr,
+            callback: self.callback.clone(),
         })
     }
 
@@ -111,6 +97,23 @@ impl PyreListener {
 pub struct PyreClientAddrPair {
     client: TcpStream,
     addr: SocketAddr,
+    callback: Arc<PyObject>,
+}
+
+#[pymethods]
+impl PyreClientAddrPair {
+    /// This is equivalent to python's socket.fileno()
+    /// depending on what platform you are on will affect what is
+    /// returned hence the configs.
+    #[cfg(target_os = "windows")]
+    fn fd(&self) -> u64 {
+        self.listener.as_raw_socket()
+    }
+
+    #[cfg(target_os = "unix")]
+    fn fd(&self) -> i32 {
+        self.listener.as_raw_fd()
+    }
 }
 
 impl FromPyObject<'_> for PyreClientAddrPair {
