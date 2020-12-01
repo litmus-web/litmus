@@ -58,23 +58,39 @@ impl H11Parser {
 
             let _ = data.split_to(n);
 
+            let (tx, rx) = sync_channel(5);
+
             if !self.chunked_encoding {
-                let (tx, rx) = sync_channel(5);
 
                 // Can we just get all the body and send it and be done?
                 if data.len() >= self.expected_length {
                     let body = data.split_to(self.expected_length);
-                    match tx.try_send(body) {
+                    send(tx, body);
+                    self.reset_state();
+                } else {
+                    // Send what's left
+                    send(tx, data.clone());
+                    data.clear();
+                }
+
+                match tx.try_send(body) {
                         Ok(_) => {},
                         // This should never ever happen unless
                         // something is massively broken.
                         Err(_) => panic!("Channel was full upon sending.")
                     }
-                }
 
                 return Ok(Some(rx))
             } else {
-                let (cut_at, body) = chunked::parse_chunked(data)
+                let maybe_body = match chunked::parse_chunked(data) {
+                    Ok(b) => b,
+                    Err(e) => return Err(e)
+                };
+
+                let body = match maybe_body {
+                    Some(b) => b,
+                    None => return Ok(None)
+                };
             }
         }
 
@@ -189,4 +205,14 @@ pub struct Request {
     pub path: String,
     pub query: String,
     pub headers: Vec<(Py<PyBytes>, Py<PyBytes>)>,
+}
+
+
+fn send(tx: SyncSender<BytesMut>, data: BytesMut) {
+    match tx.try_send(data) {
+        Ok(_) => {},
+        // This should never ever happen unless
+        // something is massively broken.
+        Err(_) => panic!("Channel was full upon sending.")
+    }
 }

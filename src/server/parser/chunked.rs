@@ -6,6 +6,15 @@ use std::iter::Enumerate;
 static INVALID_CHUNK: &'static str = "Invalid Chunk";
 
 
+/// The parse_chunked function takes a mutable reference to the main body,
+/// it expects that the content is supposed to be chunked following the
+/// correct syntax e.g. `2\r\nhi\r\n` anything other than this will be rejected
+/// that being said the parser will return `Ok(None)` if it needs more body
+/// to be able to get this chunk, if the chunk is valid and complete it
+/// will return `Ok(Some(BytesMut))` where BytesMut is the stripped out
+/// body part of the chunk.
+/// If a chunk is invalid the function returns `Err(str)` all errors are the
+/// same being that the chunk is invalid.
 pub fn parse_chunked(mut body: &mut BytesMut) -> Result<Option<BytesMut>, &'static str> {
     if body.is_empty() {
         return Ok(None)
