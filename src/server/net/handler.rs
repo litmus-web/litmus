@@ -17,6 +17,7 @@ use bytes::{BytesMut, BufMut};
 use once_cell::sync::OnceCell;
 
 use crate::listener::PyreClientAddrPair;
+use crate::server::parser::H11Parser;
 
 
 const MAX_BUFFER_SIZE: usize = 512 * 1024;
@@ -47,9 +48,9 @@ pub fn setup(
 #[pyclass]
 pub struct PyreClientHandler {
     client_handle: PyreClientAddrPair,
+    parser: H11Parser,
 
     // buffers
-    reading_buffer: BytesMut,
     writing_buffer: BytesMut,
 
     // Pre-Built callbacks
@@ -59,10 +60,6 @@ pub struct PyreClientHandler {
     // state
     reading: Arc<AtomicBool>,
     writing: Arc<AtomicBool>,
-
-    should_parse: bool,
-    chunked_encoding: bool,
-    expected_content_size: usize,
 }
 
 /// The implementations for all initialisation of objects and existing object
@@ -72,17 +69,19 @@ impl PyreClientHandler {
     /// created when absolutely needed.
     #[new]
     fn new(client: PyreClientAddrPair) -> PyResult<Self> {
-        if let _ = LOOP_REMOVE_READER.get().is_none() {
+        let test = LOOP_REMOVE_READER.get();
+        if test.is_none() {
             return Err(PyRuntimeError::new_err(
                 "Global state has not been setup, \
                 did you forget to call pyre.setup()?"
             ))
         }
 
+        let new_parse = H11Parser::new(MAX_BUFFER_SIZE);
+
         Ok(PyreClientHandler {
             client_handle: client,
-
-            reading_buffer: BytesMut::with_capacity(MAX_BUFFER_SIZE),
+            parser: new_parse,
             writing_buffer: BytesMut::with_capacity(MAX_BUFFER_SIZE),
 
             resume_reading: MaybeUninit::<Arc<PyObject>>::uninit(),
@@ -90,10 +89,6 @@ impl PyreClientHandler {
 
             reading: Arc::new(AtomicBool::new(true)),
             writing: Arc::new(AtomicBool::new(false)),
-
-            should_parse: true,
-            chunked_encoding: false,
-            expected_content_size: 0,
         })
     }
 
@@ -119,7 +114,6 @@ impl PyreClientHandler {
     /// Resets all state the handler might have as to not interfere
     /// with new client handles.
     fn reset_state(&mut self) {
-        self.reading_buffer.clear();
         self.writing_buffer.clear();
 
         self.reading.store(true, Relaxed);
@@ -133,13 +127,6 @@ impl PyreClientHandler {
     /// Called when the event loop detects that the socket is able
     /// to be read from without blocking.
     fn poll_read(&mut self) -> PyResult<()> {
-        self.read_socket();
-
-        if self.should_parse {
-            self.parse()?;
-        } else {
-            self.feed_date()?;
-        }
 
         Ok(())
     }
@@ -174,45 +161,4 @@ impl PyreClientHandler {
         ).as_bytes());
     }
 
-}
-
-impl PyreClientHandler {
-    fn parse(&mut self) -> PyResult<()> {
-
-        Ok(())
-    }
-
-    fn feed_date(&mut self) -> PyResult<()> {
-        Ok(())
-    }
-
-    /// Reads data from the socket to the internal buffer.
-    fn read_socket(&mut self) -> PyResult<()> {
-        let data = self.reading_buffer.bytes_mut();
-        let slice = unsafe {
-            std::slice::from_raw_parts_mut(data.as_mut_ptr(),data.len())
-        };
-
-        return match self.client_handle.client.read(slice) {
-            Ok(len) => {
-                unsafe { self.reading_buffer.advance_mut(len); }
-                //self.on_read_complete()?;
-                Ok(())
-            },
-            Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
-                Ok(())
-            },
-            Err(ref e) if (
-                    (e.kind() == io::ErrorKind::ConnectionReset) |
-                    (e.kind() == io::ErrorKind::ConnectionAborted) |
-                    (e.kind() == io::ErrorKind::BrokenPipe)
-            ) => {
-                self.close_and_cleanup()?;
-                Ok(())
-            },
-            Err(e) => Err(PyIOError::new_err(format!(
-                "{:?}", e
-            ))),
-        };
-    }
 }
