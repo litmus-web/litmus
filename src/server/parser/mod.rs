@@ -29,6 +29,13 @@ const MAX_HEADERS: usize = 100;
 const ZERO_LENGTH: u8 = b"0"[0];
 
 
+pub enum ParserStatus {
+    MoreDataNeeded,
+    StopParsing,
+    ParseSuccessful,
+}
+
+
 #[derive(Debug)]
 pub struct Request {
     pub protocol: Version,
@@ -48,7 +55,7 @@ pub struct Request {
 pub struct H11Parser {
     // State
     pub pause_reading: AtomicBool,
-    expect_request: bool,
+    pub expect_request: bool,
     chunked_encoding: bool,
     expected_length: usize,
 
@@ -224,26 +231,7 @@ impl H11Parser {
                     &mut self.internal_buffer
                 );
 
-                self.send_body_or_panic(chunk, true);
-
-                // No point checking for a ending chunk
-                // and getting it's tail in the next read.
-                if self.internal_buffer.len() < 5 {
-                    return Ok(())
-                }
-
-                let len = match self.internal_buffer.get(0) {
-                    None => return Ok(()),
-                    Some(next) => next
-                };
-
-                // We got the 0\r\n\r\n meaning eof
-                if len == &ZERO_LENGTH  {
-                    let end = self.internal_buffer.split_to(5);
-                    self.send_body_or_panic(end, false);
-                    self.expect_request = true;
-                }
-
+                self.send_body_or_panic(chunk, len != 0);
                 Ok(())
             },
 

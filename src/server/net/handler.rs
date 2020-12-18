@@ -121,19 +121,44 @@ impl PyreClientHandler {
     }
 }
 
-/// All callback events e.g. when `EventLoop.add_reader` calls the callback.
+/// All callback events e.g. when `EventLoop.add_reader calls the callback.
 #[pymethods]
 impl PyreClientHandler {
-    /// Called when the event loop detects that the socket is able
-    /// to be read from without blocking.
+    /// Called when the event loop detects that the
+    /// socket is able to be read from without blocking.
     fn poll_read(&mut self) -> PyResult<()> {
+        match self.parser.read(&mut self.client_handle.client) {
+            Ok(_) => Ok(()),
+            Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
+                return Ok(())
+            },
+            Err(e) => {
+                return Err(PyIOError::new_err(format!("{:?}", e)))
+            }
+        }
+
+
+        loop {
+            match self.parser.parse() {
+                Ok(_) => {
+
+                },
+
+                Err(_) => {
+
+                }
+            };
+        }
+
 
         Ok(())
     }
 
-    /// Called when the event loop detects that the socket is able
-    /// to be written to without blocking.
+    /// Called when the event loop detects that the socket
+    /// is able to be written to without blocking.
     fn poll_write(&mut self) -> PyResult<()> {
+
+
         Ok(())
     }
 }
