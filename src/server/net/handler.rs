@@ -140,25 +140,33 @@ impl PyreClientHandler {
 
 /// General utils for handling the sockets
 impl PyreClientHandler {
+    #[cfg(target_os = "windows")]
+    fn fd(&self) -> u64 {
+        self.listener.as_raw_socket()
+    }
+
+    #[cfg(target_os = "unix")]
+    fn fd(&self) -> i32 {
+        self.listener.as_raw_fd()
+    }
+
     fn close_and_cleanup(&mut self) -> PyResult<()> {
         if self.reading.load(Relaxed) {
-            //self.pause_reading()?;
+            let cb = unsafe { LOOP_REMOVE_READER.get_unchecked() };
+
+            let _ = Python::with_gil(|py| -> PyResult<PyObject> {
+                cb.call1(py, (self.fd()),)
+            })?;
         }
 
         if self.writing.load(Relaxed) {
-            //self.remove_writer()?;
+            let cb = unsafe { LOOP_REMOVE_WRITER.get_unchecked() };
+
+            let _ = Python::with_gil(|py| -> PyResult<PyObject> {
+                cb.call1(py, (self.fd()),)
+            })?;
         }
         let _ = self.client_handle.client.shutdown(Both);
         Ok(())
     }
-
-    fn respond_with_error(&mut self, msg: &'static str) {
-        let _ = self.client_handle.client.write(format!(
-            "HTTP/1.1 400 Bad Request\r\n\
-            Content-Length: {}\r\n\
-            Content-Type: text/plain; charset=UTF-8\r\n\r\n\
-            {}", &msg.len(), msg
-        ).as_bytes());
-    }
-
 }
