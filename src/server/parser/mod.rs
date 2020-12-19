@@ -33,6 +33,8 @@ pub enum ParserStatus {
     MoreDataNeeded,
     StopParsing,
     ParseSuccessful,
+    RequestParseComplete,
+    BodyFeedComplete,
 }
 
 
@@ -114,11 +116,11 @@ impl H11Parser {
     /// Begins parsing the body, this can produce many requests
     /// depending on the internal buffer, usually only one though if
     /// pipelining is not enabled.
-    pub fn parse(&mut self) -> Result<(), ()> {
+    pub fn parse(&mut self) -> ParserStatus {
         if self.expect_request {
             match self.process_request() {
-                Ok(_) => {},
-                Err(_) => return Err(())
+                ParserStatus::RequestParseComplete => {},
+                _ => {}
             }
         }
 
@@ -129,7 +131,7 @@ impl H11Parser {
     }
 
 
-    fn process_request(&mut self) -> Result<(), Box<dyn Error>> {
+    fn process_request(&mut self) -> ParserStatus {
         let mut headers: [httparse::Header<'_>; MAX_HEADERS] = unsafe {
             mem::uninitialized()
         };
@@ -141,7 +143,7 @@ impl H11Parser {
 
         // if its partial wait for the next round of parsing
         if status.is_partial() {
-            return Ok(())
+            return ParserStatus::MoreDataNeeded
         }
 
         // Remove the header part of the buffer
@@ -152,7 +154,7 @@ impl H11Parser {
         let req = self.process_headers(request)?;
 
         return match self.requests_in.try_send(req) {
-            Ok(_) => Ok(()),
+            Ok(_) => ParserStatus::RequestParseComplete,
             Err(_) => panic!(
                 "The request queue was full while trying to process a request.")
         }
@@ -200,13 +202,13 @@ impl H11Parser {
         Ok(request)
     }
 
-    fn feed_body(&mut self) -> Result<(), httparse::InvalidChunkSize> {
+    fn feed_body(&mut self) -> ParserStatus {
         if !self.chunked_encoding {
             let check = self.internal_buffer.len();
 
             // We should fill the buffer more
             if (self.expected_length > check) & (check < MAX_BUFFER_SIZE) {
-                return Ok(())
+                return ParserStatus::MoreDataNeeded
             }
 
             // Get the chunk of body, if it is able to split and have some
@@ -220,7 +222,7 @@ impl H11Parser {
 
             self.send_body_or_panic(body, more_body);
 
-            return Ok(())
+            return ParserStatus::BodyFeedComplete
         }
 
         return match parse_chunk_size(self.internal_buffer.as_ref())? {
@@ -232,11 +234,11 @@ impl H11Parser {
                 );
 
                 self.send_body_or_panic(chunk, len != 0);
-                Ok(())
+                ParserStatus::BodyFeedComplete
             },
 
             // We need more data
-            Partial => Ok(())
+            Partial => ParserStatus::MoreDataNeeded
         };
     }
 
