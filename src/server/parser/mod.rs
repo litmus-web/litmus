@@ -19,14 +19,11 @@ use std::io::{Read, self};
 use std::net::TcpStream;
 use std::sync::atomic::AtomicBool;
 use std::mem;
-use std::error::Error;
-
 use fxhash::FxHashMap;
 
 
 const MAX_BUFFER_SIZE: usize = 512 * 1024;  // 512 Kib
 const MAX_HEADERS: usize = 100;
-const ZERO_LENGTH: u8 = b"0"[0];
 
 
 pub enum ParserStatus {
@@ -35,6 +32,7 @@ pub enum ParserStatus {
     ParseSuccessful,
     RequestParseComplete,
     BodyFeedComplete,
+    InvalidRequest,
 }
 
 
@@ -120,17 +118,32 @@ impl H11Parser {
         if self.expect_request {
             match self.process_request() {
                 ParserStatus::RequestParseComplete => {},
-                _ => {}
+                ParserStatus::MoreDataNeeded => {},
+                _ => panic!("Unexpected parser status returned")
             }
         }
 
-        return match self.feed_body() {
-            Ok(_) => Ok(()),
-            Err(_) => Err(())
-        }
+        match self.feed_body() {
+            ParserStatus::BodyFeedComplete => {},
+            ParserStatus::MoreDataNeeded => {},
+            ParserStatus::StopParsing => {},
+            _ => {}
+        };
+
+        return ParserStatus::StopParsing
     }
 
-
+    /// This handles parsing the quest headers returning (In order of execution)
+    ///
+    /// `ParserStatus::MoreDataNeeded`:
+    ///     - More data is needed before another request can be made.
+    ///
+    /// `ParserStatus::RequestParseComplete`:
+    ///     - The Request has been fully parsed with headers extracted.
+    ///
+    /// `ParserStatus::InvalidRequest`:
+    ///     - The Request is invalid and should exit.
+    ///
     fn process_request(&mut self) -> ParserStatus {
         let mut headers: [httparse::Header<'_>; MAX_HEADERS] = unsafe {
             mem::uninitialized()
@@ -139,7 +152,10 @@ impl H11Parser {
         let mut request = httparse::Request::new(&mut headers);
 
         let buffer = self.internal_buffer.clone();
-        let status = request.parse(buffer.as_ref())?;
+        let status = match request.parse(buffer.as_ref()) {
+            Ok(s) => s,
+            Err(_) => return ParserStatus::InvalidRequest
+        };
 
         // if its partial wait for the next round of parsing
         if status.is_partial() {
@@ -151,7 +167,11 @@ impl H11Parser {
         let _ = self.internal_buffer.split_to(n);
 
         // Handle the headers
-        let req = self.process_headers(request)?;
+        let req = if let Ok(r) = self.process_headers(request) {
+            r
+        } else {
+            return ParserStatus::InvalidRequest
+        };
 
         return match self.requests_in.try_send(req) {
             Ok(_) => ParserStatus::RequestParseComplete,
@@ -163,7 +183,7 @@ impl H11Parser {
     fn process_headers(
         &mut self,
         req: httparse::Request
-    ) -> Result<Request, Box<dyn Error>> {
+    ) -> Result<Request, ()> {
 
         self.expected_length = 0;
 
@@ -180,7 +200,11 @@ impl H11Parser {
             if req_header.name == header::CONTENT_LENGTH {
                 self.chunked_encoding = false;
                 let temp = String::from_utf8_lossy(req_header.value);
-                self.expected_length = temp.parse::<usize>()?
+                if let Ok(n) = temp.parse::<usize>() {
+                    self.expected_length = n
+                } else {
+                    return Err(())
+                }
             } else if req_header.name == header::TRANSFER_ENCODING {
                 let content = String::from_utf8_lossy(req_header.value);
                 self.chunked_encoding = content.contains("chunked");
@@ -202,6 +226,14 @@ impl H11Parser {
         Ok(request)
     }
 
+    /// This handles parsing the request body itself (In order of execution)
+    ///
+    /// `ParserStatus::MoreDataNeeded`:
+    ///     - More data is needed before another request can be made.
+    ///
+    /// `ParserStatus::BodyFeedComplete`:
+    ///     - The Request has been fully parsed with headers extracted.
+    ///
     fn feed_body(&mut self) -> ParserStatus {
         if !self.chunked_encoding {
             let check = self.internal_buffer.len();
@@ -225,7 +257,12 @@ impl H11Parser {
             return ParserStatus::BodyFeedComplete
         }
 
-        return match parse_chunk_size(self.internal_buffer.as_ref())? {
+        let status = match parse_chunk_size(self.internal_buffer.as_ref()) {
+            Ok(s) => s,
+            Err(_) => return ParserStatus::InvalidRequest
+        };
+
+        return match status {
             Complete((start, len)) => {
                 let chunk = extract_body(
                     start,

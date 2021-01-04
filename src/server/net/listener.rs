@@ -6,15 +6,14 @@ use pyo3::exceptions::{PyBlockingIOError, PyRuntimeError, PyConnectionError, PyN
 
 use std::net::{TcpListener, TcpStream, SocketAddr};
 use std::io;
+use std::sync::Arc;
 
-use once_cell::sync::OnceCell;
 
 #[cfg(target_os = "windows")]
 use std::os::windows::io::AsRawSocket;
 
 #[cfg(target_os = "unix")]
 use std::os::unix::io::AsRawFd;
-use std::sync::Arc;
 
 
 /// This is the main listener type, built off of a Rust based TcpListener
@@ -69,7 +68,7 @@ impl PyreListener {
         client.set_nonblocking(true).expect("Cant set non-blocking");
 
         Ok(PyreClientAddrPair{
-            client,
+            sock: client,
             addr,
             callback: self.callback.clone(),
         })
@@ -95,7 +94,7 @@ impl PyreListener {
 /// never be made from python as this is purely a internal type.
 #[pyclass]
 pub struct PyreClientAddrPair {
-    pub client: TcpStream,
+    pub sock: TcpStream,
     pub addr: SocketAddr,
     pub callback: Arc<PyObject>,
 }
@@ -107,12 +106,12 @@ impl PyreClientAddrPair {
     /// returned hence the configs.
     #[cfg(target_os = "windows")]
     fn fd(&self) -> u64 {
-        self.client.as_raw_socket()
+        self.sock.as_raw_socket()
     }
 
     #[cfg(target_os = "unix")]
     fn fd(&self) -> i32 {
-        self.client.as_raw_fd()
+        self.sock.as_raw_fd()
     }
 }
 

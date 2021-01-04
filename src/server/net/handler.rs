@@ -13,11 +13,17 @@ use std::net::Shutdown::Both;
 use std::sync::atomic::AtomicBool;
 use std::io::{Write, Read};
 
-use bytes::{BytesMut, BufMut};
+#[cfg(target_os = "windows")]
+use std::os::windows::io::AsRawSocket;
+
+#[cfg(target_os = "unix")]
+use std::os::unix::io::AsRawFd;
+
+use bytes::BytesMut;
 use once_cell::sync::OnceCell;
 
 use crate::listener::PyreClientAddrPair;
-use crate::server::parser::H11Parser;
+use crate::server::parser::{H11Parser, ParserStatus};
 
 
 const MAX_BUFFER_SIZE: usize = 512 * 1024;
@@ -96,10 +102,10 @@ impl PyreClientHandler {
     /// is called after being called once you will run into ub because it
     /// will not drop the value.
     fn init(&mut self, add_reader: PyObject, add_writer: PyObject) {
-        let mut resume_ptr = self.resume_reading.as_mut_ptr();
+        let resume_ptr = self.resume_reading.as_mut_ptr();
         unsafe { resume_ptr.write(Arc::new(add_reader)) };
 
-        let mut resume_ptr = self.resume_writing.as_mut_ptr();
+        let resume_ptr = self.resume_writing.as_mut_ptr();
         unsafe { resume_ptr.write(Arc::new(add_writer)) };
     }
 
@@ -127,8 +133,8 @@ impl PyreClientHandler {
     /// Called when the event loop detects that the
     /// socket is able to be read from without blocking.
     fn poll_read(&mut self) -> PyResult<()> {
-        match self.parser.read(&mut self.client_handle.client) {
-            Ok(_) => Ok(()),
+        match self.parser.read(&mut self.client_handle.sock) {
+            Ok(_) => {},
             Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
                 return Ok(())
             },
@@ -140,13 +146,10 @@ impl PyreClientHandler {
 
         loop {
             match self.parser.parse() {
-                Ok(_) => {
-
+                ParserStatus::StopParsing => {
+                    break;
                 },
-
-                Err(_) => {
-
-                }
+                _ => {}
             };
         }
 
@@ -167,12 +170,12 @@ impl PyreClientHandler {
 impl PyreClientHandler {
     #[cfg(target_os = "windows")]
     fn fd(&self) -> u64 {
-        self.listener.as_raw_socket()
+        self.client_handle.sock.as_raw_socket()
     }
 
     #[cfg(target_os = "unix")]
     fn fd(&self) -> i32 {
-        self.listener.as_raw_fd()
+        self.client_handle.sock.as_raw_fd()
     }
 
     fn close_and_cleanup(&mut self) -> PyResult<()> {
@@ -180,7 +183,7 @@ impl PyreClientHandler {
             let cb = unsafe { LOOP_REMOVE_READER.get_unchecked() };
 
             let _ = Python::with_gil(|py| -> PyResult<PyObject> {
-                cb.call1(py, (self.fd()),)
+                cb.call1(py, (self.fd(),))
             })?;
         }
 
@@ -188,10 +191,10 @@ impl PyreClientHandler {
             let cb = unsafe { LOOP_REMOVE_WRITER.get_unchecked() };
 
             let _ = Python::with_gil(|py| -> PyResult<PyObject> {
-                cb.call1(py, (self.fd()),)
+                cb.call1(py, (self.fd(),))
             })?;
         }
-        let _ = self.client_handle.client.shutdown(Both);
+        let _ = self.client_handle.sock.shutdown(Both);
         Ok(())
     }
 }
