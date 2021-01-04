@@ -38,30 +38,23 @@ class Server:
 
         return fut
 
-    def accept_connections(self, future):
+    def accept_connections(self, _future):
         print("got conn")
         for _ in range(self.backlog):
             try:
-                client_pair = self._listener.accept()
+                handle = self._listener.accept()
             except BlockingIOError:
                 return
             else:
-                fd = client_pair.fd()
-                client = self.create_new_handle(client_pair)
-                self._loop.add_reader(fd, client, "POLL_READ")
+                fd = handle.fd()
+                handle.init(
+                    functools.partial(self._loop.add_reader, callback=handle.poll_read),
+                    functools.partial(self._loop.add_writer, callback=handle.poll_write),
+                )
+                self._loop.add_reader(fd, handle.poll_read)
 
     def task_factory(self, *args):
         self._loop.create_task(test(*args))
-
-    def create_new_handle(self, client_pair):
-        client = pyre.PyreClientHandler(client_pair)
-
-        client.init(
-            functools.partial(self._loop.add_reader, callback=client.poll_read),
-            functools.partial(self._loop.add_writer, callback=client.poll_write),
-        )
-
-        return client
 
 
 async def main():

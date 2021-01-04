@@ -8,19 +8,21 @@ use std::net::{TcpListener, TcpStream, SocketAddr};
 use std::io;
 use std::sync::Arc;
 
-
 #[cfg(target_os = "windows")]
 use std::os::windows::io::AsRawSocket;
 
 #[cfg(target_os = "unix")]
 use std::os::unix::io::AsRawFd;
 
+use crate::server::net::handler::PyreClientHandler;
+
 
 /// This is the main listener type, built off of a Rust based TcpListener
 #[pyclass]
 pub struct PyreListener {
     listener: TcpListener,
-    callback: Arc<PyObject>
+    callback: Arc<PyObject>,
+    handlers: Vec<PyreClientHandler>,
 }
 
 #[pymethods]
@@ -48,14 +50,15 @@ impl PyreListener {
 
         Ok(PyreListener {
             listener,
-            callback: Arc::new(callback)
+            callback: Arc::new(callback),
+            handlers: Vec::new(),
         })
     }
 
     /// Accepts a single client returning a internal pair for handling,
     /// ideally would be nice to have all of this be internal however the
     /// limitation of lifetimes and threadsafety make this rather hard.
-    fn accept(&mut self) -> PyResult<PyreClientAddrPair> {
+    fn accept(&mut self) -> PyResult<PyreClientHandler> {
         let (client, addr) = match self.listener.accept() {
             Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
                 return Err(PyBlockingIOError::new_err(()))
@@ -65,13 +68,24 @@ impl PyreListener {
             },
             Ok(pair) => pair,
         };
-        client.set_nonblocking(true).expect("Cant set non-blocking");
 
-        Ok(PyreClientAddrPair{
+        client.set_nonblocking(true)
+            .expect("Cant set non-blocking");
+
+        let pair = PyreClientAddrPair{
             sock: client,
             addr,
             callback: self.callback.clone(),
-        })
+        };
+
+        let handle = if let Some(mut existing) = self.handlers.pop() {
+            existing.new_client(pair);
+
+            existing
+        } else {
+            PyreClientHandler::new(pair)?
+        };
+        Ok(handle)
     }
 
     /// This is equivalent to python's socket.fileno()

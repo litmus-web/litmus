@@ -46,6 +46,31 @@ pub fn setup(
     LOOP_REMOVE_WRITER.get_or_init(|| loop_remove_writer);
 }
 
+/// Acts as write once boolean that when calling get_or_init
+/// the function returns the old value not the new value from the function
+struct OnceBool {
+    value: bool,
+}
+
+impl OnceBool {
+    fn new() -> Self {
+        Self { value: false }
+    }
+
+    /// Returns the value if true otherwise returns the old value after
+    /// calling the function to get the new value,
+    fn get_or_init(&mut self, cb: fn() -> bool) -> bool {
+        return if self.value {
+            self.value
+        } else {
+            let old = self.value;
+            let v = cb();
+            self.value = v;
+            old
+        }
+    }
+}
+
 
 /// The PyreClientHandler struct is what handles all the actual interactions
 /// with the socket, this can be reused several times over and is designed to
@@ -66,15 +91,100 @@ pub struct PyreClientHandler {
     // state
     reading: Arc<AtomicBool>,
     writing: Arc<AtomicBool>,
+
+    already_init: OnceBool,
 }
 
 /// The implementations for all initialisation of objects and existing object
 #[pymethods]
 impl PyreClientHandler {
+
+    /// This should only be called when the object is first made, if this
+    /// is called after being called once you will run into ub because it
+    /// will not drop the value.
+    pub fn init(&mut self, add_reader: PyObject, add_writer: PyObject) {
+        if self.already_init.get_or_init(|| true) {
+            return
+        };
+
+        let resume_ptr = self.resume_reading.as_mut_ptr();
+        unsafe { resume_ptr.write(Arc::new(add_reader)) };
+
+        let resume_ptr = self.resume_writing.as_mut_ptr();
+        unsafe { resume_ptr.write(Arc::new(add_writer)) };
+    }
+
+    /// This is used when recycle the handler objects as the memory allocations
+    /// are pretty expensive and we need some way of controlling the ram usage
+    /// because theres a weird leak otherwise.
+    pub fn new_client(&mut self, client: PyreClientAddrPair) {
+        self.reset_state();
+        self.client_handle = client;
+    }
+
+    /// Resets all state the handler might have as to not interfere
+    /// with new client handles.
+    pub fn reset_state(&mut self) {
+        self.writing_buffer.clear();
+
+        self.reading.store(true, Relaxed);
+        self.writing.store(false, Relaxed);
+    }
+}
+
+/// All callback events e.g. when `EventLoop.add_reader calls the callback.
+#[pymethods]
+impl PyreClientHandler {
+    #[cfg(target_os = "windows")]
+    fn fd(&self) -> u64 {
+        self.client_handle.fd()
+    }
+
+    #[cfg(target_os = "unix")]
+    fn fd(&self) -> i32 {
+        self.client_handle.fd()
+    }
+
+    /// Called when the event loop detects that the
+    /// socket is able to be read from without blocking.
+    pub fn poll_read(&mut self) -> PyResult<()> {
+        match self.parser.read(&mut self.client_handle.sock) {
+            Ok(_) => {},
+            Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
+                return Ok(())
+            },
+            Err(e) => {
+                return Err(PyIOError::new_err(format!("{:?}", e)))
+            }
+        }
+
+        loop {
+            let res = self.parser.parse();
+            match &res {
+                ParserStatus::StopParsing => {
+                    break;
+                },
+                _ => { println!("{:?}", &res) }
+            };
+        }
+
+        Ok(())
+    }
+
+    /// Called when the event loop detects that the socket
+    /// is able to be written to without blocking.
+    pub fn poll_write(&mut self) -> PyResult<()> {
+
+
+        Ok(())
+    }
+}
+
+/// General utils for handling the sockets
+impl PyreClientHandler {
     /// Used to create a new handler object, generally this should only be
     /// created when absolutely needed.
-    #[new]
-    fn new(client: PyreClientAddrPair) -> PyResult<Self> {
+    pub fn new(client: PyreClientAddrPair) -> PyResult<Self> {
         let test = LOOP_REMOVE_READER.get();
         if test.is_none() {
             return Err(PyRuntimeError::new_err(
@@ -95,85 +205,17 @@ impl PyreClientHandler {
 
             reading: Arc::new(AtomicBool::new(true)),
             writing: Arc::new(AtomicBool::new(false)),
+
+            already_init: OnceBool::new(),
         })
     }
 
-    /// This should only be called when the object is first made, if this
-    /// is called after being called once you will run into ub because it
-    /// will not drop the value.
-    fn init(&mut self, add_reader: PyObject, add_writer: PyObject) {
-        let resume_ptr = self.resume_reading.as_mut_ptr();
-        unsafe { resume_ptr.write(Arc::new(add_reader)) };
-
-        let resume_ptr = self.resume_writing.as_mut_ptr();
-        unsafe { resume_ptr.write(Arc::new(add_writer)) };
-    }
-
-    /// This is used when recycle the handler objects as the memory allocations
-    /// are pretty expensive and we need some way of controlling the ram usage
-    /// because theres a weird leak otherwise.
-    fn new_client(&mut self, client: PyreClientAddrPair) {
-        self.reset_state();
-        self.client_handle = client;
-    }
-
-    /// Resets all state the handler might have as to not interfere
-    /// with new client handles.
-    fn reset_state(&mut self) {
-        self.writing_buffer.clear();
-
-        self.reading.store(true, Relaxed);
-        self.writing.store(false, Relaxed);
-    }
-}
-
-/// All callback events e.g. when `EventLoop.add_reader calls the callback.
-#[pymethods]
-impl PyreClientHandler {
-    /// Called when the event loop detects that the
-    /// socket is able to be read from without blocking.
-    fn poll_read(&mut self) -> PyResult<()> {
-        match self.parser.read(&mut self.client_handle.sock) {
-            Ok(_) => {},
-            Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
-                return Ok(())
-            },
-            Err(e) => {
-                return Err(PyIOError::new_err(format!("{:?}", e)))
-            }
-        }
-
-
-        loop {
-            match self.parser.parse() {
-                ParserStatus::StopParsing => {
-                    break;
-                },
-                _ => {}
-            };
-        }
-
-
-        Ok(())
-    }
-
-    /// Called when the event loop detects that the socket
-    /// is able to be written to without blocking.
-    fn poll_write(&mut self) -> PyResult<()> {
-
-
-        Ok(())
-    }
-}
-
-/// General utils for handling the sockets
-impl PyreClientHandler {
     fn close_and_cleanup(&mut self) -> PyResult<()> {
         if self.reading.load(Relaxed) {
             let cb = unsafe { LOOP_REMOVE_READER.get_unchecked() };
 
             let _ = Python::with_gil(|py| -> PyResult<PyObject> {
-                cb.call1(py, (self.client_handle.fd(),))
+                cb.call1(py, (self.fd(),))
             })?;
         }
 
@@ -181,7 +223,7 @@ impl PyreClientHandler {
             let cb = unsafe { LOOP_REMOVE_WRITER.get_unchecked() };
 
             let _ = Python::with_gil(|py| -> PyResult<PyObject> {
-                cb.call1(py, (self.client_handle.fd(),))
+                cb.call1(py, (self.fd(),))
             })?;
         }
         let _ = self.client_handle.sock.shutdown(Both);

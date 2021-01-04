@@ -26,6 +26,7 @@ const MAX_BUFFER_SIZE: usize = 512 * 1024;  // 512 Kib
 const MAX_HEADERS: usize = 100;
 
 
+#[derive(Debug)]
 pub enum ParserStatus {
     MoreDataNeeded,
     StopParsing,

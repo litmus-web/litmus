@@ -33,7 +33,7 @@ fn setup(
 #[pymodule]
 fn pyre(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<listener::PyreListener>()?;
-    m.add_class::<listener::PyreClientAddrPair>()?;
+    m.add_class::<handler::PyreClientHandler>()?;
     m.add_function(wrap_pyfunction!(setup, m)?).unwrap();
     Ok(())
 }
