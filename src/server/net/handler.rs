@@ -168,6 +168,9 @@ impl PyreClientHandler {
             };
         }
 
+        let res = self.parser.requests_out.try_recv().unwrap();
+        println!("{:?}", res);
+
         Ok(())
     }
 

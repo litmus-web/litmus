@@ -13,13 +13,14 @@ use httparse::{
 use http::header;
 use http::Version;
 
-use bytes::{BytesMut, BufMut};
+use bytes::{BytesMut, BufMut, Bytes};
 
 use std::io::{Read, self};
 use std::net::TcpStream;
 use std::sync::atomic::AtomicBool;
 use std::mem;
 use fxhash::FxHashMap;
+use std::iter::FromIterator;
 
 
 const MAX_BUFFER_SIZE: usize = 512 * 1024;  // 512 Kib
@@ -41,7 +42,7 @@ pub enum ParserStatus {
 pub struct Request {
     pub protocol: Version,
     pub path: String,
-    pub headers: FxHashMap<String, Vec<u8>>,
+    pub headers: FxHashMap<String, Bytes>,
     pub body_stream: channel::Receiver<(BytesMut, bool)>,
 
     pub keep_alive: bool,
@@ -210,9 +211,11 @@ impl H11Parser {
                 let content = String::from_utf8_lossy(req_header.value);
                 self.chunked_encoding = content.contains("chunked");
             }
+
+
             headers.insert(
                 req_header.name.to_string(),
-                req_header.value.to_vec()
+                Bytes::copy_from_slice(req_header.value),
             );
         }
 
