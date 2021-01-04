@@ -105,12 +105,12 @@ impl PyreClientAddrPair {
     /// depending on what platform you are on will affect what is
     /// returned hence the configs.
     #[cfg(target_os = "windows")]
-    fn fd(&self) -> u64 {
+    pub fn fd(&self) -> u64 {
         self.sock.as_raw_socket()
     }
 
     #[cfg(target_os = "unix")]
-    fn fd(&self) -> i32 {
+    pub fn fd(&self) -> i32 {
         self.sock.as_raw_fd()
     }
 }

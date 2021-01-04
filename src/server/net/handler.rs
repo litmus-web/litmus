@@ -11,7 +11,7 @@ use std::mem::MaybeUninit;
 use std::sync::atomic::Ordering::Relaxed;
 use std::net::Shutdown::Both;
 use std::sync::atomic::AtomicBool;
-use std::io::{Write, Read};
+
 
 #[cfg(target_os = "windows")]
 use std::os::windows::io::AsRawSocket;
@@ -168,22 +168,12 @@ impl PyreClientHandler {
 
 /// General utils for handling the sockets
 impl PyreClientHandler {
-    #[cfg(target_os = "windows")]
-    fn fd(&self) -> u64 {
-        self.client_handle.sock.as_raw_socket()
-    }
-
-    #[cfg(target_os = "unix")]
-    fn fd(&self) -> i32 {
-        self.client_handle.sock.as_raw_fd()
-    }
-
     fn close_and_cleanup(&mut self) -> PyResult<()> {
         if self.reading.load(Relaxed) {
             let cb = unsafe { LOOP_REMOVE_READER.get_unchecked() };
 
             let _ = Python::with_gil(|py| -> PyResult<PyObject> {
-                cb.call1(py, (self.fd(),))
+                cb.call1(py, (self.client_handle.fd(),))
             })?;
         }
 
@@ -191,7 +181,7 @@ impl PyreClientHandler {
             let cb = unsafe { LOOP_REMOVE_WRITER.get_unchecked() };
 
             let _ = Python::with_gil(|py| -> PyResult<PyObject> {
-                cb.call1(py, (self.fd(),))
+                cb.call1(py, (self.client_handle.fd(),))
             })?;
         }
         let _ = self.client_handle.sock.shutdown(Both);
