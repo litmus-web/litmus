@@ -22,4 +22,4 @@ The main server api has been implemented other than the direct protocols, these 
 
 These benchmarks were taken while testing the pre-alpha without HTTP/1 Pipelining using `wrk`, the comparision was Pyre VS Uvicorn which is the current go to performance server.
 
-
+![alt text](https://github.com/Project-Dream-Weaver/Pyre/blob/main/images/bench-pre-alpha.png "Pyre Benchmarks")
