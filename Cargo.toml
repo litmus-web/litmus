@@ -18,18 +18,12 @@ httparse = "1.3.4"
 httpdate = "0.3"
 
 bytes = "0.6.0"
-fxhash = "0.2.1"
-once_cell = "1.5.2"
+hashbrown = "0.9.1"
 
 crossbeam = "0.8.0"
 
-
-# faster memory allocator, seems to help PyO3 a decent amount
 mimalloc = { version = "*", default-features = false}
 
 [profile.release]
 lto = "fat"
 codegen-units = 1
-
-
-
