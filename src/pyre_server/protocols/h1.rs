@@ -6,7 +6,7 @@ use crate::pyre_server::{
 
 use pyo3::PyResult;
 use pyo3::exceptions::PyRuntimeError;
-use bytes::{BytesMut, BufMut};
+use bytes::BytesMut;
 
 const MAX_BUFFER_LIMIT: usize = 256 * 1024;
 

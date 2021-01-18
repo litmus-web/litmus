@@ -45,7 +45,7 @@ impl TcpHandle {
     /// Reads the data from the socket to the supplied buffer returning
     /// a result with the number of bytes read if the operation is a success.
     pub fn read(&mut self, buffer: &mut BytesMut) -> PyResult<usize> {
-        let data = buffer.bytes_mut();
+        let data = buffer.chunk_mut();
         let mut slice = unsafe {
             std::slice::from_raw_parts_mut(data.as_mut_ptr(),data.len())
         };
