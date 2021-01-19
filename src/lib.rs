@@ -15,6 +15,7 @@ use crate::pyre_server::net::listener::NoneBlockingListener;
 
 use pyo3::prelude::*;
 use pyo3::wrap_pyfunction;
+use std::time::Duration;
 
 
 /// Creates a client handler instance linked to a TcpListener and event loop.
@@ -35,11 +36,14 @@ fn create_server(
     host: &str,
     port: u16,
     backlog: usize,
+    keep_alive: u64,
 ) -> PyResult<Server> {
     let binder = format!("{}:{}", host, port);
 
     let listener = NoneBlockingListener::bind(&binder)?;
-    let new_handler = Server::new(backlog, listener);
+    let keep_alive = Duration::from_secs(keep_alive);
+
+    let new_handler = Server::new(backlog, listener, keep_alive);
 
     Ok(new_handler)
 }

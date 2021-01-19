@@ -10,7 +10,7 @@ use crate::pyre_server::client::Client;
 use crate::pyre_server::net::listener::{NoneBlockingListener, Status};
 use crate::pyre_server::net::stream::TcpHandle;
 use crate::pyre_server::event_loop::{PreSetEventLoop, EventLoop};
-
+use std::time::Duration;
 
 
 /// A handler the managers all clients of a given TcpListener, controlling
@@ -33,6 +33,9 @@ pub struct Server {
 
     /// A pool of clients that are being managed and interacted with.
     clients: HashMap<usize, Client>,
+
+    /// The keep alive timeout duration.
+    keep_alive: Duration,
 }
 
 impl Server {
@@ -41,6 +44,7 @@ impl Server {
     pub fn new(
         backlog: usize,
         listener: NoneBlockingListener,
+        keep_alive: Duration,
     ) -> Self {
 
         let client_counter: usize = 0;
@@ -54,6 +58,8 @@ impl Server {
 
             client_counter,
             clients,
+
+            keep_alive,
         }
     }
 
@@ -202,6 +208,17 @@ impl Server {
 
         client.poll_write()?;
 
+        Ok(())
+    }
+
+    /// Polled every x seconds where the time is equivalent to the
+    /// `Server.keep_alive` duration.
+    fn poll_keep_alive(&mut self)-> PyResult<()> {
+        for (_, client) in self.clients.iter_mut() {
+            if !client.idle() {
+                client.poll_keep_alive(self.keep_alive)?;
+            }
+        }
         Ok(())
     }
 
