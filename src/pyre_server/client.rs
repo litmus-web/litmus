@@ -79,6 +79,10 @@ impl Client {
         let len = match self.handle.read(buffer)? {
             SocketStatus::WouldBlock => return Ok(()),
             SocketStatus::Complete(len) => len,
+            SocketStatus::Disconnect => {
+                self.protocol.lost_connection()?;
+                return self.shutdown();
+            },
         };
 
         self.protocol.read_buffer_filled(len)?;
@@ -95,6 +99,10 @@ impl Client {
         let len = match self.handle.write(buffer)? {
             SocketStatus::WouldBlock => return Ok(()),
             SocketStatus::Complete(len) => len,
+            SocketStatus::Disconnect => {
+                self.protocol.lost_connection()?;
+                return self.shutdown();
+            },
         };
 
         self.protocol.write_buffer_drained(len)?;

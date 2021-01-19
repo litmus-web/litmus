@@ -54,6 +54,32 @@ impl AutoProtocol {
 }
 
 impl AutoProtocol {
+    /// Called when the protocol is in charge of a new socket / handle,
+    /// the `Transport` can be used to pause and resume reading from this
+    /// socket.
+    pub fn new_connection(&mut self, transport: Transport) -> PyResult<()> {
+        return match self.selected {
+            SelectedProtocol::H1 => {
+                self.h1.new_connection(transport)
+            },
+        }
+    }
+
+    /// Called when the connection is lost from the protocol in order to
+    /// properly reset state.
+    pub fn lost_connection(&mut self) -> PyResult<()> {
+        self.reader_buffer.clear();
+        self.writer_buffer.clear();
+
+        return match self.selected {
+            SelectedProtocol::H1 => {
+                self.h1.lost_connection()
+            },
+        }
+    }
+}
+
+impl AutoProtocol {
     /// Allows the chance to switch protocol just after reading has
     /// finished.
     pub fn maybe_switch(&mut self) -> PyResult<SwitchStatus> {
