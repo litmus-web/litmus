@@ -10,7 +10,7 @@
 
 mod pyre_server;
 
-use pyre_server::server::Server;
+use crate::pyre_server::server::Server;
 use crate::pyre_server::net::listener::NoneBlockingListener;
 
 use pyo3::prelude::*;

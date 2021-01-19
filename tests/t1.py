@@ -114,7 +114,7 @@ class Server:
 
 
 async def main():
-    server = Server(host="127.0.0.1", port=8080)
+    server = Server(host="0.0.0.0", port=8080)
     server.start()
     await server.run_forever()
 

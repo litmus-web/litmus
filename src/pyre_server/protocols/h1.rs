@@ -46,7 +46,6 @@ impl H1Protocol {
     /// Called when the connection is lost from the protocol in order to
     /// properly reset state.
     pub fn lost_connection(&mut self) -> PyResult<()> {
-        println!("connection lost!");
         Ok(())
     }
 }
@@ -70,7 +69,6 @@ impl ProtocolBuffers for H1Protocol {
     }
 
     fn eof_received(&mut self) -> PyResult<()> {
-        println!("Got eof");
         self.transport()?.pause_reading()
     }
 }
