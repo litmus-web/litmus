@@ -1,10 +1,10 @@
 use std::net::{TcpStream, SocketAddr};
 use std::io::{Read, Write};
 
-#[cfg(target_os = "windows")]
+#[cfg(windows)]
 use std::os::windows::io::AsRawSocket;
 
-#[cfg(target_os = "unix")]
+#[cfg(unix)]
 use std::os::unix::io::AsRawFd;
 
 use bytes::{BytesMut, BufMut};

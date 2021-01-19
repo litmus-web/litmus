@@ -4,10 +4,10 @@ use pyo3::exceptions::PyIOError;
 use std::net::TcpListener;
 use std::io::ErrorKind;
 
-#[cfg(target_os = "windows")]
+#[cfg(windows)]
 use std::os::windows::io::AsRawSocket;
 
-#[cfg(target_os = "unix")]
+#[cfg(unix)]
 use std::os::unix::io::AsRawFd;
 
 use crate::pyre_server::net::stream::TcpHandle;
