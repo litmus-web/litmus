@@ -143,6 +143,9 @@ impl Client {
         Ok(())
     }
 
+    /// Called every X seconds equal to the passed duration.
+    /// This is what the protocols should use to check if the timeout
+    /// period has elapsed.
     pub fn poll_keep_alive(&mut self, limit: Duration) -> PyResult<()> {
         if self.last_time.elapsed() >= limit {
             self.protocol.keep_alive_expire()?;
