@@ -64,13 +64,13 @@ impl NoneBlockingListener {
     }
 
     /// Returns the raw file descriptor of the socket.
-    #[cfg(target_os = "windows")]
+    #[cfg(windows)]
     pub fn fd(&self) -> u64 {
         self.listener.as_raw_socket()
     }
 
     /// Returns the raw file descriptor of the socket.
-    #[cfg(target_os = "unix")]
+    #[cfg(unix)]
     pub fn fd(&self) -> i32 {
         self.listener.as_raw_fd()
     }

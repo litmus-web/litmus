@@ -16,7 +16,6 @@ const MAX_HEADERS: usize = 100;
 
 
 pub enum ParserStatus {
-
     NoEnoughData,
 }
 

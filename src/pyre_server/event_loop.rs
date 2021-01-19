@@ -45,34 +45,30 @@ impl Clone for EventLoop {
     }
 }
 
+#[cfg(windows)]
 impl EventLoop {
-    #[cfg(target_os = "windows")]
     /// Start monitoring the fd file descriptor for read availability
     /// and invokes a callback once the fd is available for reading.
     pub fn add_reader(&self, fd: u64, index: usize) -> PyResult<()> {
         self.invoke_add(&self.add_reader_, fd, index)
     }
 
-    #[cfg(target_os = "windows")]
     /// Stop monitoring the fd file descriptor for read availability.
     pub fn remove_reader(&self, fd: u64) -> PyResult<()> {
         self.invoke_remove(&self.remove_reader_, fd)
     }
 
-    #[cfg(target_os = "windows")]
     /// Start monitoring the fd file descriptor for write availability
     /// and invokes a callback once the fd is available for writing.
     pub fn add_writer(&self, fd: u64, index: usize) -> PyResult<()> {
         self.invoke_add(&self.add_writer_, fd, index)
     }
 
-    #[cfg(target_os = "windows")]
     /// Stop monitoring the fd file descriptor for write availability.
     pub fn remove_writer(&self, fd: u64) -> PyResult<()> {
         self.invoke_remove(&self.remove_writer_, fd)
     }
 
-    #[cfg(target_os = "windows")]
     fn invoke_remove(&self, cb: &PyObject, fd: u64) -> PyResult<()> {
         Python::with_gil(|py| -> PyResult<()> {
             let _ = cb.call1(py, (fd,))?;
@@ -80,41 +76,39 @@ impl EventLoop {
         })
     }
 
-    #[cfg(target_os = "windows")]
     fn invoke_add(&self, cb: &PyObject, fd: u64, index: usize) -> PyResult<()> {
         Python::with_gil(|py| -> PyResult<()> {
             let _ = cb.call1(py, (fd, index))?;
             Ok(())
         })
     }
+}
 
-    #[cfg(target_os = "unix")]
+
+#[cfg(unix)]
+impl EventLoop {
     /// Start monitoring the fd file descriptor for read availability
     /// and invokes a callback once the fd is available for reading.
     pub fn add_reader(&self, fd: i32, index: usize) -> PyResult<()> {
         self.invoke_add(&self.add_reader_, fd, index)
     }
 
-    #[cfg(target_os = "unix")]
     /// Stop monitoring the fd file descriptor for read availability.
     pub fn remove_reader(&self, fd: i32) -> PyResult<()> {
         self.invoke_remove(&self.remove_reader_, fd)
     }
 
-    #[cfg(target_os = "unix")]
     /// Start monitoring the fd file descriptor for write availability
     /// and invokes a callback once the fd is available for writing.
     pub fn add_writer(&self, fd: i32, index: usize) -> PyResult<()> {
         self.invoke_add(&self.add_writer_, fd, index)
     }
 
-    #[cfg(target_os = "unix")]
     /// Stop monitoring the fd file descriptor for write availability.
     pub fn remove_writer(&self, fd: i32) -> PyResult<()> {
         self.invoke_remove(&self.remove_writer_, fd)
     }
 
-    #[cfg(target_os = "unix")]
     fn invoke_remove(&self, cb: &PyObject, fd: i32) -> PyResult<()> {
         Python::with_gil(|py| -> PyResult<()> {
             let _ = cb.call1(py, (fd,))?;
@@ -122,7 +116,6 @@ impl EventLoop {
         })
     }
 
-    #[cfg(target_os = "unix")]
     fn invoke_add(&self, cb: &PyObject, fd: i32, index: usize) -> PyResult<()> {
         Python::with_gil(|py| -> PyResult<()> {
             let _ = cb.call1(py, (fd, index))?;
@@ -138,10 +131,10 @@ impl EventLoop {
 #[derive(Clone)]
 pub struct PreSetEventLoop {
     pub event_loop: EventLoop,
-    #[cfg(target_os = "unix")]
+    #[cfg(unix)]
     pub fd: i32,
 
-    #[cfg(target_os = "windows")]
+    #[cfg(windows)]
     pub fd: u64,
 
     pub index: usize,
