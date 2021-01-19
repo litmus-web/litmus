@@ -183,6 +183,10 @@ impl Server {
         self._event_loop = Some(event_loop);
     }
 
+    fn len_clients(&self) -> usize {
+        self.clients.len()
+    }
+
     /// Invoked by the python event loop when the file descriptor is ready to be
     /// read from without blocking, in this case the `index` parameter is
     /// what determines which stream is actually ready and which handler

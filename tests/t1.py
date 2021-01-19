@@ -84,6 +84,7 @@ class Server:
 
     async def keep_alive_ticker(self):
         while not self._waiter.done():
+            print(self._server.len_clients())
             try:
                 self._server.poll_keep_alive()
             except Exception as e:
