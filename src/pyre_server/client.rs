@@ -24,7 +24,7 @@ pub struct Client {
 
     /// Represents if the client is idle because the client has closed
     /// the connection or the protocol has closed the connection.
-    idle: bool,
+    is_idle: bool,
 }
 
 impl Client {
@@ -46,25 +46,32 @@ impl Client {
             event_loop,
             handle,
             protocol,
-            idle: false,
+            is_idle: false,
         })
     }
 
     /// Invoked when the client is being re-used for another connection after
     /// handling the previous connection to re-cycle memory.
-    pub fn _bind_handle(
+    pub fn bind_handle(
         &mut self,
         handle: TcpHandle,
         event_loop: PreSetEventLoop,
     ) -> PyResult<()> {
         self.handle = handle;
         self.event_loop = event_loop;
-        self.idle = false;
+        self.is_idle = false;
 
         let transport = Transport::new(self.event_loop.clone());
         self.protocol.new_connection(transport)?;
 
         Ok(())
+    }
+
+    /// Represents if the client is idle because the client has closed
+    /// the connection or the protocol has closed the connection.
+    #[inline]
+    pub fn idle(&self) -> bool {
+        self.is_idle
     }
 
     /// Shuts down the client.
@@ -92,10 +99,16 @@ impl Client {
             SocketStatus::Complete(len) => len,
             SocketStatus::Disconnect => {
                 self.protocol.lost_connection()?;
-                self.idle = true;
+                self.is_idle = true;
                 return self.shutdown();
             },
         };
+
+        // EOF
+        if len == 0 {
+            self.protocol.eof_received()?;
+            return Ok(())
+        }
 
         self.protocol.read_buffer_filled(len)?;
 
@@ -113,6 +126,7 @@ impl Client {
             SocketStatus::Complete(len) => len,
             SocketStatus::Disconnect => {
                 self.protocol.lost_connection()?;
+                self.is_idle = true;
                 return self.shutdown();
             },
         };

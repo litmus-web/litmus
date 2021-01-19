@@ -103,6 +103,15 @@ impl AutoProtocol {
 
         Ok(())
     }
+
+    /// The EOF has been sent by the socket.
+    pub fn eof_received(&mut self) -> PyResult<()> {
+        match self.selected {
+            SelectedProtocol::H1 => {
+                self.h1.eof_received()
+            },
+        }
+    }
 }
 
 impl SocketCommunicator for AutoProtocol {
@@ -114,7 +123,7 @@ impl SocketCommunicator for AutoProtocol {
 
     /// Called when data is able to be read from the socket, the returned
     /// buffer is filled and then the read_buffer_filled callback is invoked.
-    fn read_buffer_filled(&mut self, _amount: usize) -> PyResult<()> {
+    fn read_buffer_filled(&mut self, amount: usize) -> PyResult<()> {
         return match self.selected {
             SelectedProtocol::H1 => {
                 self.h1.data_received(&mut self.reader_buffer)
@@ -137,7 +146,7 @@ impl SocketCommunicator for AutoProtocol {
     /// Called when data is able to be read from the socket, the returned
     /// buffer is filled and then the read_buffer_filled callback is invoked.
     fn write_buffer_drained(&mut self, amount: usize) -> PyResult<()> {
-        if amount == 0 {
+        if (amount == 0) | (self.writer_buffer.len() == 0) {
             self.pause_writing()?;
         }
 

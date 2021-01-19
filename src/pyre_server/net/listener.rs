@@ -59,6 +59,9 @@ impl NoneBlockingListener {
             )))
         };
 
+        stream.set_nonblocking(true)
+            .expect("Failed to set non-blocking.");
+
         let handle = TcpHandle::new(stream, addr);
         Ok(Status::Successful(handle))
     }

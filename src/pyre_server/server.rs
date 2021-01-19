@@ -71,15 +71,41 @@ impl Server {
         }
     }
 
+    /// Finds the first client that is classed as 'idle' which is
+    /// then selected to be used as the handler of the new connection.
+    fn get_idle_client(&self) -> Option<usize> {
+        for (key, client) in self.clients.iter() {
+            if client.idle() {
+                return Some(*key)
+            }
+        }
+
+        None
+    }
+
+    /// Selects a index using either an existing idle protocol instance
+    /// or making a new protocol by returning a index that does not exist in
+    /// the clients hashmap.
+    fn select_index(&mut self) -> usize {
+        match self.get_idle_client() {
+            Some(index) => index,
+            None => {
+                let index = self.client_counter;
+
+                // Better increase it now
+                self.client_counter += 1;
+
+                index
+            }
+        }
+    }
+
     /// An internal function that is invoked when a client has been accepted
     /// and its handle has been wrapped in a `client::Client` struct.
     fn handle_client(&mut self, handle: TcpHandle) -> PyResult<()> {
-        let index = self.client_counter;
-
-        // Better increase it now
-        self.client_counter += 1;
-
         let fd = handle.fd();
+
+        let index = self.select_index();
 
         let loop_ = PreSetEventLoop {
             event_loop: self.event_loop()?.clone(),
@@ -91,9 +117,15 @@ impl Server {
 
         loop_.resume_reading()?;
 
-        let cli = Client::from_handle(handle,loop_)?;
+        if let Some(client) = self.clients.get_mut(&index) {
+            println!("Using existing idle connection");
+            client.bind_handle(handle, loop_)?;
+        } else {
+            println!("Making new connection");
+            let cli = Client::from_handle(handle,loop_)?;
 
-        self.clients.insert(index, cli);
+            self.clients.insert(index, cli);
+        }
 
         Ok(())
     }

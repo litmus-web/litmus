@@ -17,7 +17,6 @@ pub struct H1Protocol {
 impl H1Protocol {
     /// Create a new H1Protocol instance.
     pub fn new() -> Self {
-
         Self {
             maybe_transport: None,
         }
@@ -55,15 +54,24 @@ impl H1Protocol {
 impl ProtocolBuffers for H1Protocol {
     fn data_received(&mut self, buffer: &mut BytesMut) -> PyResult<()> {
         println!("{:?}", buffer);
+        self.transport()?.resume_writing()?;
         Ok(())
     }
 
-    fn fill_write_buffer(&mut self, _buffer: &mut BytesMut) -> PyResult<()> {
+    fn fill_write_buffer(&mut self, buffer: &mut BytesMut) -> PyResult<()> {
+        buffer.extend_from_slice("HTTP/1.1 200 OK\r\n\
+        Content-Length: 13\r\n\
+        Server: Pyre\r\n\r\nHello, World!".as_bytes());
+        println!("{:?}", buffer);
         Ok(())
     }
 
     fn writing_paused(&mut self) -> PyResult<()> {
         Ok(())
+    }
+
+    fn eof_received(&mut self) -> PyResult<()> {
+        unimplemented!()
     }
 }
 
