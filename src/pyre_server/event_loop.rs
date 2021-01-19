@@ -45,30 +45,34 @@ impl Clone for EventLoop {
     }
 }
 
-#[cfg(target_os = "windows")]
 impl EventLoop {
+    #[cfg(target_os = "windows")]
     /// Start monitoring the fd file descriptor for read availability
     /// and invokes a callback once the fd is available for reading.
     pub fn add_reader(&self, fd: u64, index: usize) -> PyResult<()> {
         self.invoke_add(&self.add_reader_, fd, index)
     }
 
+    #[cfg(target_os = "windows")]
     /// Stop monitoring the fd file descriptor for read availability.
     pub fn remove_reader(&self, fd: u64) -> PyResult<()> {
         self.invoke_remove(&self.remove_reader_, fd)
     }
 
+    #[cfg(target_os = "windows")]
     /// Start monitoring the fd file descriptor for write availability
     /// and invokes a callback once the fd is available for writing.
     pub fn add_writer(&self, fd: u64, index: usize) -> PyResult<()> {
         self.invoke_add(&self.add_writer_, fd, index)
     }
 
+    #[cfg(target_os = "windows")]
     /// Stop monitoring the fd file descriptor for write availability.
     pub fn remove_writer(&self, fd: u64) -> PyResult<()> {
         self.invoke_remove(&self.remove_writer_, fd)
     }
 
+    #[cfg(target_os = "windows")]
     fn invoke_remove(&self, cb: &PyObject, fd: u64) -> PyResult<()> {
         Python::with_gil(|py| -> PyResult<()> {
             let _ = cb.call1(py, (fd,))?;
@@ -76,38 +80,41 @@ impl EventLoop {
         })
     }
 
+    #[cfg(target_os = "windows")]
     fn invoke_add(&self, cb: &PyObject, fd: u64, index: usize) -> PyResult<()> {
         Python::with_gil(|py| -> PyResult<()> {
             let _ = cb.call1(py, (fd, index))?;
             Ok(())
         })
     }
-}
 
-#[cfg(target_os = "unix")]
-impl EventLoop {
+    #[cfg(target_os = "unix")]
     /// Start monitoring the fd file descriptor for read availability
     /// and invokes a callback once the fd is available for reading.
     pub fn add_reader(&self, fd: i32, index: usize) -> PyResult<()> {
         self.invoke_add(&self.add_reader_, fd, index)
     }
 
+    #[cfg(target_os = "unix")]
     /// Stop monitoring the fd file descriptor for read availability.
     pub fn remove_reader(&self, fd: i32) -> PyResult<()> {
         self.invoke_remove(&self.remove_reader_, fd)
     }
 
+    #[cfg(target_os = "unix")]
     /// Start monitoring the fd file descriptor for write availability
     /// and invokes a callback once the fd is available for writing.
     pub fn add_writer(&self, fd: i32, index: usize) -> PyResult<()> {
         self.invoke_add(&self.add_writer_, fd, index)
     }
 
+    #[cfg(target_os = "unix")]
     /// Stop monitoring the fd file descriptor for write availability.
     pub fn remove_writer(&self, fd: i32) -> PyResult<()> {
         self.invoke_remove(&self.remove_writer_, fd)
     }
 
+    #[cfg(target_os = "unix")]
     fn invoke_remove(&self, cb: &PyObject, fd: i32) -> PyResult<()> {
         Python::with_gil(|py| -> PyResult<()> {
             let _ = cb.call1(py, (fd,))?;
@@ -115,6 +122,7 @@ impl EventLoop {
         })
     }
 
+    #[cfg(target_os = "unix")]
     fn invoke_add(&self, cb: &PyObject, fd: i32, index: usize) -> PyResult<()> {
         Python::with_gil(|py| -> PyResult<()> {
             let _ = cb.call1(py, (fd, index))?;
@@ -127,30 +135,21 @@ impl EventLoop {
 /// A pre configured event loop wrapper that has a given file descriptor and
 /// index, this means it can be called without having to specify the given
 /// file descriptor and index.
-#[cfg(target_os = "windows")]
 #[derive(Clone)]
 pub struct PreSetEventLoop {
     pub event_loop: EventLoop,
-    pub fd: u64,
-    pub index: usize,
-
-    pub is_reading_: Arc<AtomicBool>,
-    pub is_writing_: Arc<AtomicBool>,
-}
-
-/// A pre configured event loop wrapper that has a given file descriptor and
-/// index, this means it can be called without having to specify the given
-/// file descriptor and index.
-#[cfg(target_os = "unix")]
-#[derive(Clone)]
-pub struct PreSetEventLoop {
-    pub event_loop: EventLoop,
+    #[cfg(target_os = "unix")]
     pub fd: i32,
+
+    #[cfg(target_os = "windows")]
+    pub fd: u64,
+
     pub index: usize,
 
     pub is_reading_: Arc<AtomicBool>,
     pub is_writing_: Arc<AtomicBool>,
 }
+
 
 impl PreSetEventLoop {
     /// Resumes the file descriptor listener waiting for when the fd can be
