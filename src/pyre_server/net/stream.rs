@@ -1,5 +1,5 @@
 use std::net::{TcpStream, SocketAddr};
-use std::io::{Read, Write, ErrorKind};
+use std::io::{self, Read, Write, ErrorKind};
 
 #[cfg(windows)]
 use std::os::windows::io::AsRawSocket;
@@ -14,6 +14,7 @@ use pyo3::{PyResult, PyErr};
 pub enum SocketStatus {
     Complete(usize),
     WouldBlock,
+    Disconnect
 }
 
 
@@ -61,6 +62,12 @@ impl TcpHandle {
             Err(ref e) if e.kind() == ErrorKind::WouldBlock => {
                 return Ok(SocketStatus::WouldBlock)
             },
+            Err(ref e) if e.kind() == ErrorKind::ConnectionReset => {
+                return Ok(SocketStatus::Disconnect)
+            },
+            Err(ref e) if e.kind() == ErrorKind::ConnectionAborted => {
+                return Ok(SocketStatus::Disconnect)
+            },
             Err(e) => {
                 return Err(PyErr::from(e))
             }
@@ -79,6 +86,12 @@ impl TcpHandle {
             Ok(n) => n,
             Err(ref e) if e.kind() == ErrorKind::WouldBlock => {
                 return Ok(SocketStatus::WouldBlock)
+            },
+            Err(ref e) if e.kind() == ErrorKind::ConnectionReset => {
+                return Ok(SocketStatus::Disconnect)
+            },
+            Err(ref e) if e.kind() == ErrorKind::ConnectionAborted => {
+                return Ok(SocketStatus::Disconnect)
             },
             Err(e) => {
                 return Err(PyErr::from(e))

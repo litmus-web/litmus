@@ -54,7 +54,7 @@ impl H1Protocol {
 impl ProtocolBuffers for H1Protocol {
     fn data_received(&mut self, buffer: &mut BytesMut) -> PyResult<()> {
         println!("{:?}", buffer);
-        unimplemented!()
+        Ok(())
     }
 
     fn fill_write_buffer(&mut self, _buffer: &mut BytesMut) -> PyResult<()> {
