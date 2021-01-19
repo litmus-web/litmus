@@ -49,7 +49,9 @@ impl Client {
             event_loop,
             handle,
             protocol,
+
             is_idle: false,
+            last_time: Instant::now(),
         })
     }
 
