@@ -118,10 +118,8 @@ impl Server {
         loop_.resume_reading()?;
 
         if let Some(client) = self.clients.get_mut(&index) {
-            println!("Using existing idle connection");
             client.bind_handle(handle, loop_)?;
         } else {
-            println!("Making new connection");
             let cli = Client::from_handle(handle,loop_)?;
 
             self.clients.insert(index, cli);
