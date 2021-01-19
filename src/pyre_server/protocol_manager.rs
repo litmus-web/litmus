@@ -64,6 +64,8 @@ impl AutoProtocol {
         }
     }
 
+    /// Pauses reading from the event loop and notifies the protocol of
+    /// the pause to allow the protocol to re-wake the state later on.
     fn pause_writing(&mut self) -> PyResult<()> {
         self.transport.pause_writing()?;
 
