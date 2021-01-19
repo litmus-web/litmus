@@ -1,9 +1,9 @@
 use pyo3::PyResult;
+use std::time::{Instant, Duration};
 
 use crate::pyre_server::abc::SocketCommunicator;
 use crate::pyre_server::net::stream::{TcpHandle, SocketStatus};
 use crate::pyre_server::event_loop::PreSetEventLoop;
-
 use crate::pyre_server::protocol_manager::{AutoProtocol, SelectedProtocol};
 use crate::pyre_server::transport::Transport;
 
@@ -25,6 +25,9 @@ pub struct Client {
     /// Represents if the client is idle because the client has closed
     /// the connection or the protocol has closed the connection.
     is_idle: bool,
+
+    /// When data was last received.
+    last_time: Instant,
 }
 
 impl Client {
@@ -112,6 +115,8 @@ impl Client {
 
         self.protocol.read_buffer_filled(len)?;
 
+        self.last_time = Instant::now();
+
         self.protocol.maybe_switch()?;
 
         Ok(())
@@ -133,6 +138,13 @@ impl Client {
 
         self.protocol.write_buffer_drained(len)?;
 
+        Ok(())
+    }
+
+    pub fn poll_keep_alive(&mut self, limit: Duration) -> PyResult<()> {
+        if self.last_time.elapsed() >= limit {
+            self.protocol.keep_alive_expire()?;
+        }
         Ok(())
     }
 }
