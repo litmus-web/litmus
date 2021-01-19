@@ -51,9 +51,14 @@ impl Client {
         &mut self,
         handle: TcpHandle,
         event_loop: PreSetEventLoop,
-    ) {
+    ) -> PyResult<()> {
         self.handle = handle;
         self.event_loop = event_loop;
+
+        let transport = Transport::new(self.event_loop.clone());
+        self.protocol.new_connection(transport)?;
+
+        Ok(())
     }
 
     /// Shuts down the client.
