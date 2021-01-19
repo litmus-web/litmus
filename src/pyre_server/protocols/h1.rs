@@ -53,7 +53,7 @@ impl H1Protocol {
 
 impl ProtocolBuffers for H1Protocol {
     fn data_received(&mut self, buffer: &mut BytesMut) -> PyResult<()> {
-        println!("{:?}", buffer);
+        buffer.clear();
         self.transport()?.resume_writing()?;
         Ok(())
     }
@@ -62,7 +62,6 @@ impl ProtocolBuffers for H1Protocol {
         buffer.extend_from_slice("HTTP/1.1 200 OK\r\n\
         Content-Length: 13\r\n\
         Server: Pyre\r\n\r\nHello, World!".as_bytes());
-        println!("{:?}", buffer);
         Ok(())
     }
 
@@ -71,7 +70,8 @@ impl ProtocolBuffers for H1Protocol {
     }
 
     fn eof_received(&mut self) -> PyResult<()> {
-        unimplemented!()
+        println!("Got eof");
+        self.transport()?.pause_reading()
     }
 }
 
