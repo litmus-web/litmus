@@ -6,6 +6,10 @@ from typing import Optional
 import pyre
 
 
+loop = asyncio.SelectorEventLoop()
+asyncio.set_event_loop(loop)
+
+
 class FileDescriptorPartial:
     """
     Creates a partial callback with a preset callback set,
@@ -105,4 +109,4 @@ async def main():
     await server.run_forever()
 
 
-asyncio.run(main())
+loop.run_until_complete(main())

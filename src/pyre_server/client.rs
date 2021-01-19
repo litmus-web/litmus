@@ -1,7 +1,7 @@
 use pyo3::PyResult;
 
 use crate::pyre_server::abc::SocketCommunicator;
-use crate::pyre_server::net::stream::TcpHandle;
+use crate::pyre_server::net::stream::{TcpHandle, SocketStatus};
 use crate::pyre_server::event_loop::PreSetEventLoop;
 
 use crate::pyre_server::protocol_manager::{AutoProtocol, SelectedProtocol};
@@ -76,7 +76,10 @@ impl Client {
     pub fn poll_read(&mut self) -> PyResult<()> {
         let buffer = self.protocol.read_buffer_acquire()?;
 
-        let len = self.handle.read(buffer)?;
+        let len = match self.handle.read(buffer)? {
+            SocketStatus::WouldBlock => return Ok(()),
+            SocketStatus::Complete(len) => len,
+        };
 
         self.protocol.read_buffer_filled(len)?;
 
@@ -89,7 +92,10 @@ impl Client {
     pub fn poll_write(&mut self) -> PyResult<()> {
         let buffer = self.protocol.write_buffer_acquire()?;
 
-        let len = self.handle.write(buffer)?;
+        let len = match self.handle.write(buffer)? {
+            SocketStatus::WouldBlock => return Ok(()),
+            SocketStatus::Complete(len) => len,
+        };
 
         self.protocol.write_buffer_drained(len)?;
 

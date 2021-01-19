@@ -36,27 +36,33 @@ impl H1Protocol {
 }
 
 impl H1Protocol {
+    /// Called when the protocol is in charge of a new socket / handle,
+    /// the `Transport` can be used to pause and resume reading from this
+    /// socket.
     pub fn new_connection(&mut self, transport: Transport) -> PyResult<()> {
         self.maybe_transport = Some(transport);
         Ok(())
     }
 
+    /// Called when the connection is lost from the protocol in order to
+    /// properly reset state.
     pub fn lost_connection(&mut self) -> PyResult<()> {
         unimplemented!()
     }
 }
 
 impl ProtocolBuffers for H1Protocol {
-    fn data_received(&mut self, _buffer: &mut BytesMut) -> PyResult<()> {
+    fn data_received(&mut self, buffer: &mut BytesMut) -> PyResult<()> {
+        println!("{:?}", buffer);
         unimplemented!()
     }
 
     fn fill_write_buffer(&mut self, _buffer: &mut BytesMut) -> PyResult<()> {
-        unimplemented!()
+        Ok(())
     }
 
     fn writing_paused(&mut self) -> PyResult<()> {
-        unimplemented!()
+        Ok(())
     }
 }
 

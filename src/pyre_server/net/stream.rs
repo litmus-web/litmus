@@ -1,5 +1,5 @@
 use std::net::{TcpStream, SocketAddr};
-use std::io::{Read, Write};
+use std::io::{Read, Write, ErrorKind};
 
 #[cfg(windows)]
 use std::os::windows::io::AsRawSocket;
@@ -8,7 +8,13 @@ use std::os::windows::io::AsRawSocket;
 use std::os::unix::io::AsRawFd;
 
 use bytes::{BytesMut, BufMut};
-use pyo3::PyResult;
+use pyo3::{PyResult, PyErr};
+
+
+pub enum SocketStatus {
+    Complete(usize),
+    WouldBlock,
+}
 
 
 
@@ -44,27 +50,43 @@ impl TcpHandle {
 
     /// Reads the data from the socket to the supplied buffer returning
     /// a result with the number of bytes read if the operation is a success.
-    pub fn read(&mut self, buffer: &mut BytesMut) -> PyResult<usize> {
+    pub fn read(&mut self, buffer: &mut BytesMut) -> PyResult<SocketStatus> {
         let data = buffer.chunk_mut();
         let mut slice = unsafe {
             std::slice::from_raw_parts_mut(data.as_mut_ptr(),data.len())
         };
 
-        let len = self.stream.read(&mut slice)?;
+        let len = match self.stream.read(&mut slice) {
+            Ok(n) => n,
+            Err(ref e) if e.kind() == ErrorKind::WouldBlock => {
+                return Ok(SocketStatus::WouldBlock)
+            },
+            Err(e) => {
+                return Err(PyErr::from(e))
+            }
+        };
 
         unsafe { buffer.advance_mut(len); }
 
-        Ok(len)
+        Ok(SocketStatus::Complete(len))
     }
 
     /// Writes the data from the supplied buffer to the socket returning a
     /// result with the number of bytes written to the socket if the operation
     /// is a success.
-    pub fn write(&mut self, buffer: &mut BytesMut) -> PyResult<usize> {
-        let len = self.stream.write(buffer)?;
+    pub fn write(&mut self, buffer: &mut BytesMut) -> PyResult<SocketStatus> {
+        let len = match self.stream.write(buffer) {
+            Ok(n) => n,
+            Err(ref e) if e.kind() == ErrorKind::WouldBlock => {
+                return Ok(SocketStatus::WouldBlock)
+            },
+            Err(e) => {
+                return Err(PyErr::from(e))
+            }
+        };
 
         let _ = buffer.split_to(len);
 
-        Ok(len)
+        Ok(SocketStatus::Complete(len))
     }
 }
