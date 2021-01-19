@@ -63,6 +63,18 @@ impl AutoProtocol {
             },
         }
     }
+
+    fn pause_writing(&mut self) -> PyResult<()> {
+        self.transport.pause_writing()?;
+
+        match self.selected {
+            SelectedProtocol::H1 => {
+                self.h1.writing_paused()?;
+            },
+        };
+
+        Ok(())
+    }
 }
 
 impl SocketCommunicator for AutoProtocol {
@@ -98,7 +110,7 @@ impl SocketCommunicator for AutoProtocol {
     /// buffer is filled and then the read_buffer_filled callback is invoked.
     fn write_buffer_drained(&mut self, amount: usize) -> PyResult<()> {
         if amount == 0 {
-            self.transport.pause_writing()?;
+            self.pause_writing()?;
         }
 
         Ok(())

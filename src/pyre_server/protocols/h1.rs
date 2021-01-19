@@ -37,7 +37,6 @@ impl H1Protocol {
 
 impl H1Protocol {
     pub fn new_connection(&mut self, transport: Transport) -> PyResult<()> {
-        println!("Got transport");
         self.maybe_transport = Some(transport);
         Ok(())
     }
@@ -48,11 +47,15 @@ impl H1Protocol {
 }
 
 impl ProtocolBuffers for H1Protocol {
-    fn data_received(&mut self, buffer: &mut BytesMut) -> PyResult<()> {
+    fn data_received(&mut self, _buffer: &mut BytesMut) -> PyResult<()> {
         unimplemented!()
     }
 
-    fn fill_write_buffer(&mut self, buffer: &mut BytesMut) -> PyResult<()> {
+    fn fill_write_buffer(&mut self, _buffer: &mut BytesMut) -> PyResult<()> {
+        unimplemented!()
+    }
+
+    fn writing_paused(&mut self) -> PyResult<()> {
         unimplemented!()
     }
 }

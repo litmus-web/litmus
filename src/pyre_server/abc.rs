@@ -34,6 +34,9 @@ pub trait ProtocolBuffers {
 
     /// Invoked when data is ready to be written to the socket.
     fn fill_write_buffer(&mut self, buffer: &mut BytesMut) -> PyResult<()>;
+
+    /// Invoked when data is ready to be written to the socket.
+    fn writing_paused(&mut self) -> PyResult<()>;
 }
 
 
