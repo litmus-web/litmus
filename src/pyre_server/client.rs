@@ -21,6 +21,10 @@ pub struct Client {
     /// A `ProtoManager` that controls the swapping and interfacing of
     /// multiple protocols.
     protocol: AutoProtocol,
+
+    /// Represents if the client is idle because the client has closed
+    /// the connection or the protocol has closed the connection.
+    idle: bool,
 }
 
 impl Client {
@@ -42,6 +46,7 @@ impl Client {
             event_loop,
             handle,
             protocol,
+            idle: false,
         })
     }
 
@@ -54,6 +59,7 @@ impl Client {
     ) -> PyResult<()> {
         self.handle = handle;
         self.event_loop = event_loop;
+        self.idle = false;
 
         let transport = Transport::new(self.event_loop.clone());
         self.protocol.new_connection(transport)?;
@@ -86,6 +92,7 @@ impl Client {
             SocketStatus::Complete(len) => len,
             SocketStatus::Disconnect => {
                 self.protocol.lost_connection()?;
+                self.idle = true;
                 return self.shutdown();
             },
         };
