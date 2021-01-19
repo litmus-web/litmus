@@ -1,11 +1,14 @@
 use pyo3::PyResult;
 use bytes::BytesMut;
 
-use crate::pyre_server::abc::SocketCommunicator;
+use crate::pyre_server::abc::{SocketCommunicator, ProtocolBuffers, BaseTransport};
 use crate::pyre_server::switch::{Switchable, SwitchStatus};
 
 use crate::pyre_server::protocols::h1;
 use crate::pyre_server::transport::Transport;
+
+
+const MAX_BUFFER_LIMIT: usize = 256 * 1024;
 
 
 /// The allowed protocols to set the auto protocol to.
@@ -21,6 +24,9 @@ pub struct AutoProtocol {
     transport: Transport,
 
     h1: h1::H1Protocol,
+
+    writer_buffer: BytesMut,
+    reader_buffer: BytesMut,
 }
 
 impl AutoProtocol {
@@ -34,10 +40,15 @@ impl AutoProtocol {
         let mut h1 = h1::H1Protocol::new();
         h1.new_connection(transport.clone())?;
 
+        let buff1 = BytesMut::with_capacity(MAX_BUFFER_LIMIT);
+        let buff2 = BytesMut::with_capacity(MAX_BUFFER_LIMIT);
+
         Ok(Self {
             selected,
             transport,
             h1,
+            writer_buffer: buff1,
+            reader_buffer: buff2,
         })
     }
 }
@@ -58,19 +69,15 @@ impl SocketCommunicator for AutoProtocol {
     /// Called when data is able to be read from the socket, the returned
     /// buffer is filled and then the read_buffer_filled callback is invoked.
     fn read_buffer_acquire(&mut self) -> PyResult<&mut BytesMut> {
-        return match self.selected {
-            SelectedProtocol::H1 => {
-                self.h1.read_buffer_acquire()
-            },
-        }
+        Ok(&mut self.reader_buffer)
     }
 
     /// Called when data is able to be read from the socket, the returned
     /// buffer is filled and then the read_buffer_filled callback is invoked.
-    fn read_buffer_filled(&mut self, amount: usize) -> PyResult<()> {
+    fn read_buffer_filled(&mut self, _amount: usize) -> PyResult<()> {
         return match self.selected {
             SelectedProtocol::H1 => {
-                self.h1.read_buffer_filled(amount)
+                self.h1.data_received(&mut self.reader_buffer)
             },
         }
     }
@@ -78,20 +85,22 @@ impl SocketCommunicator for AutoProtocol {
     /// Called when data is able to be read from the socket, the returned
     /// buffer is filled and then the read_buffer_filled callback is invoked.
     fn write_buffer_acquire(&mut self) -> PyResult<&mut BytesMut> {
-        return match self.selected {
+        match self.selected {
             SelectedProtocol::H1 => {
-                self.h1.write_buffer_acquire()
+                self.h1.fill_write_buffer(&mut self.writer_buffer)?;
             },
-        }
+        };
+
+        Ok(&mut self.writer_buffer)
     }
 
     /// Called when data is able to be read from the socket, the returned
     /// buffer is filled and then the read_buffer_filled callback is invoked.
     fn write_buffer_drained(&mut self, amount: usize) -> PyResult<()> {
-        return match self.selected {
-            SelectedProtocol::H1 => {
-                self.h1.write_buffer_drained(amount)
-            },
+        if amount == 0 {
+            self.transport.pause_writing()?;
         }
+
+        Ok(())
     }
 }

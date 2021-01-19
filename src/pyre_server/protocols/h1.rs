@@ -1,5 +1,5 @@
 use crate::pyre_server::{
-    abc::{SocketCommunicator, BaseTransport},
+    abc::{ProtocolBuffers, BaseTransport},
     switch::{Switchable, SwitchStatus},
     transport::Transport,
 };
@@ -8,27 +8,18 @@ use pyo3::PyResult;
 use pyo3::exceptions::PyRuntimeError;
 use bytes::BytesMut;
 
-const MAX_BUFFER_LIMIT: usize = 256 * 1024;
-
 
 /// The protocol to add handling for the HTTP/1.x protocol.
 pub struct H1Protocol {
     maybe_transport: Option<Transport>,
-
-    writer_buffer: BytesMut,
-    reader_buffer: BytesMut,
 }
 
 impl H1Protocol {
     /// Create a new H1Protocol instance.
     pub fn new() -> Self {
-        let buff1 = BytesMut::with_capacity(MAX_BUFFER_LIMIT);
-        let buff2 = BytesMut::with_capacity(MAX_BUFFER_LIMIT);
 
         Self {
             maybe_transport: None,
-            writer_buffer: buff1,
-            reader_buffer: buff2,
         }
     }
 
@@ -56,34 +47,13 @@ impl H1Protocol {
     }
 }
 
-impl SocketCommunicator for H1Protocol {
-    fn read_buffer_acquire(&mut self) -> PyResult<&mut BytesMut> {
-        return Ok(&mut self.reader_buffer)
+impl ProtocolBuffers for H1Protocol {
+    fn data_received(&mut self, buffer: &mut BytesMut) -> PyResult<()> {
+        unimplemented!()
     }
 
-    fn read_buffer_filled(&mut self, amount: usize) -> PyResult<()> {
-        if (amount >= MAX_BUFFER_LIMIT) | (amount == 0) {
-            self.transport()?.pause_reading()?;
-        }
-
-        println!("Buffer filled, {}", amount);
-        println!("{:?}", self.reader_buffer);
-
-        self.transport()?.pause_reading()?;
-
-        Ok(())
-    }
-
-    fn write_buffer_acquire(&mut self) -> PyResult<&mut BytesMut> {
-        return Ok(&mut self.writer_buffer)
-    }
-
-    fn write_buffer_drained(&mut self, _amount: usize) -> PyResult<()> {
-        if self.writer_buffer.len() == 0 {
-            self.transport()?.pause_writing()?;
-        }
-
-        Ok(())
+    fn fill_write_buffer(&mut self, buffer: &mut BytesMut) -> PyResult<()> {
+        unimplemented!()
     }
 }
 

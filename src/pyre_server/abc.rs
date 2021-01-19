@@ -26,6 +26,17 @@ pub trait SocketCommunicator {
 }
 
 
+/// Defines the necessary methods for implementing data handling for the
+/// high level protocols.
+pub trait ProtocolBuffers {
+    /// Invoked when data is read from the socket passing the buffer.
+    fn data_received(&mut self, buffer: &mut BytesMut) -> PyResult<()>;
+
+    /// Invoked when data is ready to be written to the socket.
+    fn fill_write_buffer(&mut self, buffer: &mut BytesMut) -> PyResult<()>;
+}
+
+
 /// Defined the necessary methods for a transport handler
 pub trait BaseTransport {
     /// Pauses reading of the set connection.
