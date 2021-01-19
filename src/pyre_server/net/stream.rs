@@ -1,4 +1,4 @@
-use std::net::{TcpStream, SocketAddr};
+use std::net::{TcpStream, SocketAddr, Shutdown};
 use std::io::{self, Read, Write, ErrorKind};
 
 #[cfg(windows)]
@@ -101,5 +101,9 @@ impl TcpHandle {
         let _ = buffer.split_to(len);
 
         Ok(SocketStatus::Complete(len))
+    }
+
+    pub fn close(&mut self) {
+        let _ = self.stream.shutdown(Shutdown::Both);
     }
 }

@@ -58,6 +58,7 @@ class Server:
             self.host,
             self.port,
             self.backlog,
+            5,
         )
 
         self._server.init(
@@ -75,10 +76,19 @@ class Server:
 
     def start(self):
         self._server.start(self.loop.add_reader, self._server.poll_accept)
+        self.loop.create_task(self.keep_alive_ticker())
         self._server.poll_accept()
 
     async def run_forever(self):
         await self._waiter
+
+    async def keep_alive_ticker(self):
+        while not self._waiter.done():
+            try:
+                self._server.poll_keep_alive()
+            except Exception as e:
+                print("Unhandled keep alive exception: {}".format(e))
+            await asyncio.sleep(5)
 
     @property
     def _add_reader(self):

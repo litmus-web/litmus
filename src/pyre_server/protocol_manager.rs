@@ -112,16 +112,6 @@ impl AutoProtocol {
             },
         }
     }
-
-    /// The keep alive period has expired as no data has been
-    /// received within the given timeout period.
-    pub fn keep_alive_expire(&mut self) -> PyResult<()> {
-        match self.selected {
-            SelectedProtocol::H1 => {
-                self.h1.keep_alive_expire()
-            },
-        }
-    }
 }
 
 impl SocketCommunicator for AutoProtocol {

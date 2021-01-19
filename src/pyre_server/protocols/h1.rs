@@ -49,11 +49,6 @@ impl H1Protocol {
         println!("connection lost!");
         Ok(())
     }
-
-    /// Called when data has not be received within the keep-alive period.
-    pub fn keep_alive_expire(&mut self) -> PyResult<()> {
-        Ok(())
-    }
 }
 
 impl ProtocolBuffers for H1Protocol {

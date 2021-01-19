@@ -148,7 +148,9 @@ impl Client {
     /// period has elapsed.
     pub fn poll_keep_alive(&mut self, limit: Duration) -> PyResult<()> {
         if self.last_time.elapsed() >= limit {
-            self.protocol.keep_alive_expire()?;
+            self.handle.close();
+            self.is_idle = true;
+            return self.shutdown()
         }
         Ok(())
     }
