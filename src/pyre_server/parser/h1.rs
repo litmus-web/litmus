@@ -9,7 +9,7 @@ use bytes::{BytesMut, Bytes, Buf, BufMut};
 
 use crossbeam::channel::{unbounded, Receiver, Sender};
 
-use httparse::{Status, parse_chunk_size};
+use httparse::{Status, parse_chunk_size, Header};
 
 
 const MAX_HEADERS: usize = 100;
@@ -25,8 +25,8 @@ pub struct Request {
 }
 
 
-pub fn extract_request(buffer: &mut BytesMut) -> Result<(), Box<dyn Error>> {
-    let mut headers: [httparse::Header<'_>; MAX_HEADERS] = unsafe {
+pub fn extract_request(buffer: &mut BytesMut) -> Result<[Header<'_>; MAX_HEADERS], Box<dyn Error>> {
+    let mut headers: [Header<'_>; MAX_HEADERS] = unsafe {
         mem::uninitialized()
     };
 
@@ -35,5 +35,5 @@ pub fn extract_request(buffer: &mut BytesMut) -> Result<(), Box<dyn Error>> {
     let status = request.parse(buffer)?;
 
 
-    Ok(())
+    Ok(headers)
 }

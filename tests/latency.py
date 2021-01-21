@@ -1,21 +1,12 @@
-import requests
+import time
 
-from time import perf_counter
+def iterate():
+    a = 0
+    for _ in range(1_000_000_000):
+        a += 1
 
-
-runs = 1000
-
-
-def timeit(host: str):
-    times = []
-    for _ in range(runs):
-        start = perf_counter()
-        requests.get(host)
-        stop = perf_counter() - start
-        times.append(stop)
-
-    print(f"Host: {host} Took {(sum(times) / len(times)) * 1000}ms")
-
-
-timeit("http://127.0.0.1:8080")
-timeit("http://127.0.0.1:5000")
+start = time.perf_counter()
+for _ in range(500):
+    iterate()
+stop = time.perf_counter() - start
+print(stop)

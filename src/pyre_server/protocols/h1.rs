@@ -12,6 +12,7 @@ use bytes::BytesMut;
 /// The protocol to add handling for the HTTP/1.x protocol.
 pub struct H1Protocol {
     maybe_transport: Option<Transport>,
+    recieved: bool,
 }
 
 impl H1Protocol {
@@ -19,6 +20,7 @@ impl H1Protocol {
     pub fn new() -> Self {
         Self {
             maybe_transport: None,
+            recieved: false,
         }
     }
 
@@ -61,6 +63,7 @@ impl ProtocolBuffers for H1Protocol {
         buffer.extend_from_slice("HTTP/1.1 200 OK\r\n\
         Content-Length: 13\r\n\
         Server: Pyre\r\n\r\nHello, World!".as_bytes());
+
         Ok(())
     }
 
