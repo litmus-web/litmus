@@ -19,7 +19,7 @@ httpdate = "0.3"
 
 bytes = "1.0.1"
 hashbrown = "0.9.1"
-
+rustc-hash = "1.1.0"
 crossbeam = "0.8.0"
 
 mimalloc = { version = "*", default-features = false}

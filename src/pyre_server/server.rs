@@ -1,7 +1,7 @@
 use pyo3::prelude::*;
 use pyo3::exceptions::PyRuntimeError;
 
-use hashbrown::HashMap;
+use rustc_hash::FxHashMap;
 
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
@@ -33,7 +33,7 @@ pub struct Server {
     client_counter: usize,
 
     /// A pool of clients that are being managed and interacted with.
-    clients: HashMap<usize, Client>,
+    clients: FxHashMap<usize, Client>,
 
     /// The keep alive timeout duration.
     keep_alive: Duration,
@@ -54,7 +54,7 @@ impl Server {
     ) -> Self {
 
         let client_counter: usize = 0;
-        let clients = HashMap::new();
+        let clients = FxHashMap::default();
 
         Self {
             backlog,
