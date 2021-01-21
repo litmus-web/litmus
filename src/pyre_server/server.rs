@@ -5,12 +5,13 @@ use hashbrown::HashMap;
 
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
+use std::time::Duration;
 
 use crate::pyre_server::client::Client;
 use crate::pyre_server::net::listener::{NoneBlockingListener, Status};
 use crate::pyre_server::net::stream::TcpHandle;
 use crate::pyre_server::event_loop::{PreSetEventLoop, EventLoop};
-use std::time::Duration;
+
 
 
 /// A handler the managers all clients of a given TcpListener, controlling
