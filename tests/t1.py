@@ -47,18 +47,23 @@ class Server:
             port: int = 8080,
             *,
             backlog: int = 1024,
+            keep_alive: int = 5,
+            idle_max: int = 300,
             loop: Optional[AbstractEventLoop] = None,
     ):
         self.host = host
         self.port = port
         self.backlog = backlog
+        self.keep_alive = keep_alive
+        self.idle_max = idle_max
         self.loop = loop or asyncio.get_event_loop()
 
         self._server: pyre.Server = pyre.create_server(
             self.host,
             self.port,
             self.backlog,
-            5,
+            self.keep_alive,
+            self.idle_max,
         )
 
         self._server.init(
@@ -77,6 +82,7 @@ class Server:
     def start(self):
         self._server.start(self.loop.add_reader, self._server.poll_accept)
         self.loop.create_task(self.keep_alive_ticker())
+        self.loop.create_task(self.idle_max_ticker())
         self._server.poll_accept()
 
     async def run_forever(self):
@@ -89,7 +95,15 @@ class Server:
                 self._server.poll_keep_alive()
             except Exception as e:
                 print("Unhandled keep alive exception: {}".format(e))
-            await asyncio.sleep(5)
+            await asyncio.sleep(self.keep_alive)
+
+    async def idle_max_ticker(self):
+        while not self._waiter.done():
+            try:
+                self._server.poll_idle()
+            except Exception as e:
+                print("Unhandled keep alive exception: {}".format(e))
+            await asyncio.sleep(self.idle_max)
 
     @property
     def _add_reader(self):
@@ -115,7 +129,7 @@ class Server:
 
 
 async def main():
-    server = Server(host="0.0.0.0", port=8080)
+    server = Server(host="0.0.0.0", port=8080, idle_max=20)
     server.start()
     await server.run_forever()
 

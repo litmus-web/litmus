@@ -37,13 +37,15 @@ fn create_server(
     port: u16,
     backlog: usize,
     keep_alive: u64,
+    idle_max: u64,
 ) -> PyResult<Server> {
     let binder = format!("{}:{}", host, port);
 
     let listener = NoneBlockingListener::bind(&binder)?;
     let keep_alive = Duration::from_secs(keep_alive);
+    let idle_max = Duration::from_secs(idle_max);
 
-    let new_handler = Server::new(backlog, listener, keep_alive);
+    let new_handler = Server::new(backlog, listener, keep_alive, idle_max);
 
     Ok(new_handler)
 }

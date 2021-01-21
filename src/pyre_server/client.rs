@@ -28,6 +28,9 @@ pub struct Client {
 
     /// When data was last received.
     last_time: Instant,
+
+    /// The instant since the client was set to idle.
+    idle_for: Instant,
 }
 
 impl Client {
@@ -52,6 +55,7 @@ impl Client {
 
             is_idle: false,
             last_time: Instant::now(),
+            idle_for: Instant::now(),
         })
     }
 
@@ -64,6 +68,7 @@ impl Client {
     ) -> PyResult<()> {
         self.handle = handle;
         self.event_loop = event_loop;
+
         self.is_idle = false;
 
         let transport = Transport::new(self.event_loop.clone());
@@ -77,6 +82,12 @@ impl Client {
     #[inline]
     pub fn idle(&self) -> bool {
         self.is_idle
+    }
+
+    /// Measures how long the client has been inactive for.
+    #[inline]
+    pub fn idle_duration(&self) -> Duration {
+        self.idle_for.elapsed()
     }
 
     /// Shuts down the client.
@@ -105,6 +116,7 @@ impl Client {
             SocketStatus::Disconnect => {
                 self.protocol.lost_connection()?;
                 self.is_idle = true;
+                self.idle_for = Instant::now();
                 return self.shutdown();
             },
         };
@@ -134,6 +146,7 @@ impl Client {
             SocketStatus::Disconnect => {
                 self.protocol.lost_connection()?;
                 self.is_idle = true;
+                self.idle_for = Instant::now();
                 return self.shutdown();
             },
         };
@@ -150,6 +163,7 @@ impl Client {
         if self.last_time.elapsed() >= limit {
             self.handle.close();
             self.is_idle = true;
+            self.idle_for = Instant::now();
             return self.shutdown()
         }
         Ok(())

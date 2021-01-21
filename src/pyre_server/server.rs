@@ -36,6 +36,10 @@ pub struct Server {
 
     /// The keep alive timeout duration.
     keep_alive: Duration,
+
+    /// The timeout duration for idling clients, if a client has been
+    /// inactive above this duration the client is dropped from memory.
+    idle_max: Duration,
 }
 
 impl Server {
@@ -45,6 +49,7 @@ impl Server {
         backlog: usize,
         listener: NoneBlockingListener,
         keep_alive: Duration,
+        idle_max: Duration,
     ) -> Self {
 
         let client_counter: usize = 0;
@@ -60,6 +65,7 @@ impl Server {
             clients,
 
             keep_alive,
+            idle_max,
         }
     }
 
@@ -224,6 +230,21 @@ impl Server {
             }
         }
         Ok(())
+    }
+
+    /// Polled every x seconds where the time is equivalent to the
+    /// `Server.idle_max` duration.
+    fn poll_idle(&mut self) {
+        let keys: Vec<usize> = self.clients.keys().copied().collect();
+        for key in keys {
+            let maybe_client = self.clients.get(&key);
+            if maybe_client.is_none() { continue };
+
+            let client = maybe_client.unwrap();
+            if client.idle_duration() > self.idle_max {
+                self.clients.remove(&key);
+            }
+        }
     }
 
     /// Invoked by the python event loop when the listener is ready to be
