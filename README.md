@@ -1,4 +1,5 @@
 [![CodeFactor](https://www.codefactor.io/repository/github/project-dream-weaver/pyre/badge)](https://www.codefactor.io/repository/github/project-dream-weaver/pyre)
+[![Rust Report Card](https://rust-reportcard.xuri.me/badge/github.com/Project-Dream-Weaver/Pyre)](https://rust-reportcard.xuri.me/report/github.com/Project-Dream-Weaver/Pyre)
 
 # Pyre
 A fast asyncronous HTTP server and framework written in Rust for Python.
