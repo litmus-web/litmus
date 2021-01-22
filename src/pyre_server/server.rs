@@ -144,7 +144,7 @@ impl Server {
             let cli = Client::from_handle(
                 handle,
                 loop_,
-                self.callback.clone()
+                self.callback.clone(),
             )?;
 
             self.clients.insert(index, cli);

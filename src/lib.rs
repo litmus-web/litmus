@@ -13,6 +13,7 @@ mod pyre_server;
 use crate::pyre_server::server::Server;
 use crate::pyre_server::net::listener::NoneBlockingListener;
 use crate::pyre_server::py_callback::CallbackHandler;
+use crate::pyre_server::responders::data_callback::DataSender;
 
 use pyo3::prelude::*;
 use pyo3::wrap_pyfunction;
@@ -68,5 +69,6 @@ fn create_server(
 fn pyre(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(create_server, m)?)?;
     m.add_class::<Server>()?;
+    m.add_class::<DataSender>()?;
     Ok(())
 }

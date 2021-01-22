@@ -1,14 +1,17 @@
-use crate::pyre_server::{
-    abc::{ProtocolBuffers, BaseTransport},
-    switch::{Switchable, SwitchStatus},
-    transport::Transport,
-    parser::h1::extract_request,
-};
+use crate::pyre_server::abc::{ProtocolBuffers, BaseTransport};
+use crate::pyre_server::switch::{Switchable, SwitchStatus};
+use crate::pyre_server::transport::Transport;
+use crate::pyre_server::parser::h1::extract_request;
+use crate::pyre_server::py_callback::CallbackHandler;
+use crate::pyre_server::responders::data_callback::{DataSender, SenderPayload};
 
 use pyo3::PyResult;
 use pyo3::exceptions::PyRuntimeError;
-use bytes::BytesMut;
-use crate::pyre_server::py_callback::CallbackHandler;
+
+use bytes::{BytesMut, Bytes};
+use std::sync::Arc;
+
+use crossbeam::channel::{Sender, Receiver, unbounded};
 
 
 /// The protocol to add handling for the HTTP/1.x protocol.
@@ -20,14 +23,23 @@ pub struct H1Protocol {
 
     /// The python callback handler.
     callback: CallbackHandler,
+
+    /// The sender half for sending body chunks.
+    tx: Sender<SenderPayload>,
+
+    /// The receiver half for sending body chunks.
+    rx: Receiver<SenderPayload>,
 }
 
 impl H1Protocol {
     /// Create a new H1Protocol instance.
     pub fn new(callback: CallbackHandler) -> Self {
+        let (tx, rx) = unbounded();
         Self {
             maybe_transport: None,
             callback,
+            tx,
+            rx,
         }
     }
 
@@ -62,16 +74,19 @@ impl H1Protocol {
 impl ProtocolBuffers for H1Protocol {
     fn data_received(&mut self, buffer: &mut BytesMut) -> PyResult<()> {
         extract_request(buffer);
-        self.callback.invoke((1,))?;
+
+        let responder = DataSender::new(self.tx.clone());
+        self.callback.invoke((responder,))?;
+
         buffer.clear();
         self.transport()?.resume_writing()?;
         Ok(())
     }
 
     fn fill_write_buffer(&mut self, buffer: &mut BytesMut) -> PyResult<()> {
-        buffer.extend_from_slice("HTTP/1.1 200 OK\r\n\
-        Content-Length: 13\r\n\
-        Server: Pyre\r\n\r\nHello, World!".as_bytes());
+        while let Ok((_more_body, buff)) = self.rx.try_recv() {
+            buffer.extend(buff);
+        }
 
         Ok(())
     }
