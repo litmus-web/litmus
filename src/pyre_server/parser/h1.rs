@@ -57,10 +57,6 @@ pub fn extract_request(buffer: &mut BytesMut) -> Result<ParserStatus, Box<dyn Er
         expect("Version was None after complete parse");
 
 
-    for header in headers.iter() {
-        println!("{:?}", &header.name);
-    }
-
     //println!("{:?}", &request.headers);
 
 

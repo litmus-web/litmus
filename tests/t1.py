@@ -49,7 +49,7 @@ class Server:
             debug: bool = False,
             backlog: int = 1024,
             keep_alive: int = 5,
-            idle_max: int = 300,
+            idle_max: int = -1,
             loop: Optional[AbstractEventLoop] = None,
     ):
         self.host = host
