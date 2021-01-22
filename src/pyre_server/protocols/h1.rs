@@ -1,17 +1,30 @@
+// `mem::uninitialized` replaced with `mem::MaybeUninit`,
+// can't upgrade yet
+#![allow(deprecated)]
+
 use crate::pyre_server::abc::{ProtocolBuffers, BaseTransport};
 use crate::pyre_server::switch::{Switchable, SwitchStatus};
 use crate::pyre_server::transport::Transport;
-use crate::pyre_server::parser::h1::extract_request;
 use crate::pyre_server::py_callback::CallbackHandler;
 use crate::pyre_server::responders::data_callback::{DataSender, SenderPayload};
 
 use pyo3::PyResult;
 use pyo3::exceptions::PyRuntimeError;
 
-use bytes::{BytesMut, Bytes};
+use std::mem;
 use std::sync::Arc;
 
+use bytes::{BytesMut, Bytes};
+
 use crossbeam::channel::{Sender, Receiver, unbounded};
+
+use httparse::{Status, parse_chunk_size, Header, Request};
+use http::version::Version;
+
+
+/// The max headers allowed in a single request.
+const MAX_HEADERS: usize = 100;
+
 
 
 /// The protocol to add handling for the HTTP/1.x protocol.
@@ -73,12 +86,27 @@ impl H1Protocol {
 
 impl ProtocolBuffers for H1Protocol {
     fn data_received(&mut self, buffer: &mut BytesMut) -> PyResult<()> {
-        extract_request(buffer);
+        // This should be fine as it is guaranteed to be initialised
+        // before we use it, just waiting for the ability to use
+        // MaybeUninit, till then here we are.
+        let mut headers: [Header<'_>; MAX_HEADERS] = unsafe {
+            mem::uninitialized()
+        };
 
-        let responder = DataSender::new(self.tx.clone());
-        self.callback.invoke((responder,))?;
+        let body = buffer.clone();
 
-        buffer.clear();
+        let mut request = Request::new(&mut headers);
+        let len = match request.parse(&body) {
+            Ok(status) => status.unwrap(),
+            Err(e) => return Err(PyRuntimeError::new_err(format!(
+                "{:?}", e  // todo remove this, add custom http response.
+            )))
+        };
+
+        let _ = buffer.split_to(len);
+
+        self.on_request_parse(&mut request);
+
         self.transport()?.resume_writing()?;
         Ok(())
     }
@@ -107,5 +135,22 @@ impl Switchable for H1Protocol {
     fn switch_protocol(&mut self) -> PyResult<SwitchStatus> {
         // ignore for now
         Ok(SwitchStatus::NoSwitch)
+    }
+}
+
+impl H1Protocol {
+    fn on_request_parse(&self, request: &mut Request) -> PyResult<()> {
+        let method = request.method
+            .expect("Value was None at complete parse");
+        let path = request.path
+            .expect("Value was None at complete parse");
+        let version = request.version
+            .expect("Value was None at complete parse");
+
+
+        let responder = DataSender::new(self.tx.clone());
+        self.callback.invoke((responder,))?;
+
+        Ok(())
     }
 }

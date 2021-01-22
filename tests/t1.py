@@ -165,7 +165,10 @@ async def main():
     print("Running @ http://127.0.0.1:8080")
     server = Server(callback, host="0.0.0.0", port=8080)
     server.start()
-    await server.run_forever()
-
+    try:
+        await server.run_forever()
+    except KeyboardInterrupt:
+        print("Shutting down server")
+        server.shutdown()
 
 loop.run_until_complete(main())
