@@ -3,9 +3,9 @@ use bytes::BytesMut;
 
 use crate::pyre_server::abc::{SocketCommunicator, ProtocolBuffers, BaseTransport};
 use crate::pyre_server::switch::{Switchable, SwitchStatus};
-
 use crate::pyre_server::protocols::h1;
 use crate::pyre_server::transport::Transport;
+use crate::pyre_server::py_callback::CallbackHandler;
 
 
 const MAX_BUFFER_LIMIT: usize = 256 * 1024;
@@ -20,12 +20,23 @@ pub enum SelectedProtocol {
 
 /// A changeable protocol which does not modify the external API.
 pub struct AutoProtocol {
+    /// The selector that determines which protocol is called and when.
     selected: SelectedProtocol,
+
+    /// The selected transport, this handles all event loop interactions.
     transport: Transport,
 
+    /// The http/1 protocol handler.
     h1: h1::H1Protocol,
 
+    /// The writer buffer that covers all protocols, this saves memory as
+    /// we have to create each protocol instance per client so we dont want
+    /// to be creating 3 * 256KB every time.
     writer_buffer: BytesMut,
+
+    /// The reader buffer that covers all protocols, this saves memory as
+    /// we have to create each protocol instance per client so we dont want
+    /// to be creating 3 * 256KB every time.
     reader_buffer: BytesMut,
 }
 
@@ -35,9 +46,11 @@ impl AutoProtocol {
     pub fn new(
         selected: SelectedProtocol,
         transport: Transport,
+        callback: CallbackHandler,
     ) -> PyResult<Self> {
 
-        let mut h1 = h1::H1Protocol::new();
+        let mut h1 = h1::H1Protocol::new(callback);
+
         h1.new_connection(transport.clone())?;
 
         let buff1 = BytesMut::with_capacity(MAX_BUFFER_LIMIT);

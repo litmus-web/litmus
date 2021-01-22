@@ -6,6 +6,7 @@ use crate::pyre_server::net::stream::{TcpHandle, SocketStatus};
 use crate::pyre_server::event_loop::PreSetEventLoop;
 use crate::pyre_server::protocol_manager::{AutoProtocol, SelectedProtocol};
 use crate::pyre_server::transport::Transport;
+use crate::pyre_server::py_callback::CallbackHandler;
 
 
 /// A wrapper around the standard tcp stream and addr to produce a interface
@@ -38,6 +39,7 @@ impl Client {
     pub fn from_handle(
         handle: TcpHandle,
         event_loop: PreSetEventLoop,
+        callback: CallbackHandler,
     ) -> PyResult<Self> {
 
         let transport = Transport::new(event_loop.clone());
@@ -46,6 +48,7 @@ impl Client {
         let protocol = AutoProtocol::new(
             SelectedProtocol::H1,
             transport,
+            callback,
         )?;
 
         Ok(Self {

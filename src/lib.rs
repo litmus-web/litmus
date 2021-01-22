@@ -12,6 +12,7 @@ mod pyre_server;
 
 use crate::pyre_server::server::Server;
 use crate::pyre_server::net::listener::NoneBlockingListener;
+use crate::pyre_server::py_callback::CallbackHandler;
 
 use pyo3::prelude::*;
 use pyo3::wrap_pyfunction;
@@ -35,6 +36,7 @@ use std::time::Duration;
 fn create_server(
     host: &str,
     port: u16,
+    callback: PyObject,
     backlog: usize,
     keep_alive: u64,
     idle_max: u64,
@@ -42,10 +44,18 @@ fn create_server(
     let binder = format!("{}:{}", host, port);
 
     let listener = NoneBlockingListener::bind(&binder)?;
+    let callback = CallbackHandler::new(callback);
+
     let keep_alive = Duration::from_secs(keep_alive);
     let idle_max = Duration::from_secs(idle_max);
 
-    let new_handler = Server::new(backlog, listener, keep_alive, idle_max);
+    let new_handler = Server::new(
+        backlog,
+        listener,
+        callback,
+        keep_alive,
+        idle_max
+    );
 
     Ok(new_handler)
 }

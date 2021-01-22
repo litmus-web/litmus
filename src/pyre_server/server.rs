@@ -11,7 +11,7 @@ use crate::pyre_server::client::Client;
 use crate::pyre_server::net::listener::{NoneBlockingListener, Status};
 use crate::pyre_server::net::stream::TcpHandle;
 use crate::pyre_server::event_loop::{PreSetEventLoop, EventLoop};
-
+use crate::pyre_server::py_callback::CallbackHandler;
 
 
 /// A handler the managers all clients of a given TcpListener, controlling
@@ -41,6 +41,10 @@ pub struct Server {
     /// The timeout duration for idling clients, if a client has been
     /// inactive above this duration the client is dropped from memory.
     idle_max: Duration,
+
+    /// The python task callback, this creates a callback task to
+    /// Python when the server is ready to call it.
+    callback: CallbackHandler,
 }
 
 impl Server {
@@ -49,6 +53,8 @@ impl Server {
     pub fn new(
         backlog: usize,
         listener: NoneBlockingListener,
+        callback: CallbackHandler,
+
         keep_alive: Duration,
         idle_max: Duration,
     ) -> Self {
@@ -67,6 +73,8 @@ impl Server {
 
             keep_alive,
             idle_max,
+
+            callback,
         }
     }
 
@@ -133,7 +141,11 @@ impl Server {
         if let Some(client) = self.clients.get_mut(&index) {
             client.bind_handle(handle, loop_)?;
         } else {
-            let cli = Client::from_handle(handle,loop_)?;
+            let cli = Client::from_handle(
+                handle,
+                loop_,
+                self.callback.clone()
+            )?;
 
             self.clients.insert(index, cli);
         }

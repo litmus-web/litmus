@@ -21,7 +21,6 @@ bytes = "1.0.1"
 rustc-hash = "1.1.0"
 crossbeam = "0.8.0"
 
-mimalloc = { version = "*", default-features = false}
 
 [profile.release]
 lto = "fat"

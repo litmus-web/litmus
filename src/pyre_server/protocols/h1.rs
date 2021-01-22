@@ -8,20 +8,26 @@ use crate::pyre_server::{
 use pyo3::PyResult;
 use pyo3::exceptions::PyRuntimeError;
 use bytes::BytesMut;
+use crate::pyre_server::py_callback::CallbackHandler;
 
 
 /// The protocol to add handling for the HTTP/1.x protocol.
 pub struct H1Protocol {
+    /// A possible Transport struct, this can be None if the protocol
+    /// is not initialised before it starts handling interactions but this
+    /// should never happen.
     maybe_transport: Option<Transport>,
-    recieved: bool,
+
+    /// The python callback handler.
+    callback: CallbackHandler,
 }
 
 impl H1Protocol {
     /// Create a new H1Protocol instance.
-    pub fn new() -> Self {
+    pub fn new(callback: CallbackHandler) -> Self {
         Self {
             maybe_transport: None,
-            recieved: false,
+            callback,
         }
     }
 
@@ -56,6 +62,7 @@ impl H1Protocol {
 impl ProtocolBuffers for H1Protocol {
     fn data_received(&mut self, buffer: &mut BytesMut) -> PyResult<()> {
         extract_request(buffer);
+        self.callback.invoke((1,))?;
         buffer.clear();
         self.transport()?.resume_writing()?;
         Ok(())

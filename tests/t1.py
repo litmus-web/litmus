@@ -1,13 +1,17 @@
 import asyncio
 
 from asyncio import AbstractEventLoop
-from typing import Optional
+from typing import Optional, Callable
 
 import pyre
 
 
 loop = asyncio.SelectorEventLoop()
 asyncio.set_event_loop(loop)
+
+
+async def callback(*args):
+    pass
 
 
 class FileDescriptorPartial:
@@ -40,9 +44,23 @@ class FileDescriptorPartial:
         self._caller(fd, self._callback, index)
 
 
+class PartialTask:
+    """
+    A partial task factory, when called it produces a task of the
+    callback with the give args and kwargs.
+    """
+    def __init__(self, loop_: asyncio.AbstractEventLoop, cb):
+        self.loop = loop_
+        self.cb = cb
+
+    def __call__(self, *args, **kwargs):
+        self.loop.create_task(self.cb(*args, **kwargs))
+
+
 class Server:
     def __init__(
             self,
+            app: Callable,
             host: str = "127.0.0.1",
             port: int = 8080,
             *,
@@ -60,12 +78,15 @@ class Server:
         self.idle_max = idle_max
         self.loop = loop or asyncio.get_event_loop()
 
+        self._factory = PartialTask(self.loop, app)
+
         self._server: pyre.Server = pyre.create_server(
             self.host,
             self.port,
+            self._factory,
             self.backlog,
             self.keep_alive,
-            self.idle_max,
+            self.idle_max if idle_max > 0 else 0,
         )
 
         self._server.init(
@@ -135,7 +156,7 @@ class Server:
 
 async def main():
     print("Running @ http://127.0.0.1:8080")
-    server = Server(host="0.0.0.0", port=8080)
+    server = Server(callback, host="0.0.0.0", port=8080)
     server.start()
     await server.run_forever()
 
