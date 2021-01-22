@@ -2,6 +2,7 @@ use crate::pyre_server::{
     abc::{ProtocolBuffers, BaseTransport},
     switch::{Switchable, SwitchStatus},
     transport::Transport,
+    parser::h1::extract_request,
 };
 
 use pyo3::PyResult;
@@ -54,6 +55,7 @@ impl H1Protocol {
 
 impl ProtocolBuffers for H1Protocol {
     fn data_received(&mut self, buffer: &mut BytesMut) -> PyResult<()> {
+        extract_request(buffer);
         buffer.clear();
         self.transport()?.resume_writing()?;
         Ok(())

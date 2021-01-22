@@ -46,6 +46,7 @@ class Server:
             host: str = "127.0.0.1",
             port: int = 8080,
             *,
+            debug: bool = False,
             backlog: int = 1024,
             keep_alive: int = 5,
             idle_max: int = 300,
@@ -53,6 +54,7 @@ class Server:
     ):
         self.host = host
         self.port = port
+        self.debug = debug
         self.backlog = backlog
         self.keep_alive = keep_alive
         self.idle_max = idle_max
@@ -92,6 +94,8 @@ class Server:
 
     async def keep_alive_ticker(self):
         while not self._waiter.done():
+            if self.debug:
+                print(self._server.len_clients())
             try:
                 self._server.poll_keep_alive()
             except Exception as e:
@@ -130,6 +134,7 @@ class Server:
 
 
 async def main():
+    print("Running @ http://127.0.0.1:8080")
     server = Server(host="0.0.0.0", port=8080)
     server.start()
     await server.run_forever()
