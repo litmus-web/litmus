@@ -2,6 +2,7 @@
 [![Rust Report Card](https://rust-reportcard.xuri.me/badge/github.com/Project-Dream-Weaver/Pyre)](https://rust-reportcard.xuri.me/report/github.com/Project-Dream-Weaver/Pyre)
 
 # Pyre
+**NOTE: THIS IS NOT PRODUCTION READY AS OF YET**
 A fast asyncronous HTTP server and framework written in Rust for Python.
 
 ### Why yet another webserver and framework?
