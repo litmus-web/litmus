@@ -6,7 +6,7 @@ use crate::pyre_server::abc::{ProtocolBuffers, BaseTransport};
 use crate::pyre_server::switch::{Switchable, SwitchStatus};
 use crate::pyre_server::transport::Transport;
 use crate::pyre_server::py_callback::CallbackHandler;
-use crate::pyre_server::responders::data_callback::{DataSender, SenderPayload};
+use crate::pyre_server::responders::sender::{DataSender, SenderPayload};
 
 use pyo3::PyResult;
 use pyo3::exceptions::PyRuntimeError;
@@ -38,21 +38,21 @@ pub struct H1Protocol {
     callback: CallbackHandler,
 
     /// The sender half for sending body chunks.
-    tx: Sender<SenderPayload>,
+    sender_tx: Sender<SenderPayload>,
 
     /// The receiver half for sending body chunks.
-    rx: Receiver<SenderPayload>,
+    sender_rx: Receiver<SenderPayload>,
 }
 
 impl H1Protocol {
     /// Create a new H1Protocol instance.
     pub fn new(callback: CallbackHandler) -> Self {
-        let (tx, rx) = unbounded();
+        let (sender_tx, sender_rx) = unbounded();
         Self {
             maybe_transport: None,
             callback,
-            tx,
-            rx,
+            sender_tx,
+            sender_rx,
         }
     }
 
@@ -112,14 +112,10 @@ impl ProtocolBuffers for H1Protocol {
     }
 
     fn fill_write_buffer(&mut self, buffer: &mut BytesMut) -> PyResult<()> {
-        while let Ok((_more_body, buff)) = self.rx.try_recv() {
+        while let Ok((_more_body, buff)) = self.sender_rx.try_recv() {
             buffer.extend(buff);
         }
 
-        Ok(())
-    }
-
-    fn writing_paused(&mut self) -> PyResult<()> {
         Ok(())
     }
 
@@ -147,8 +143,12 @@ impl H1Protocol {
         let version = request.version
             .expect("Value was None at complete parse");
 
+        let mut parsed_vec = Vec::with_capacity(request.headers.len());
+        for header in request.headers.iter() {
+            parsed_vec.push((header.name, header.value))
+        }
 
-        let responder = DataSender::new(self.tx.clone());
+        let responder = DataSender::new(self.sender_tx.clone());
         self.callback.invoke((responder,))?;
 
         Ok(())

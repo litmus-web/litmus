@@ -107,13 +107,6 @@ impl AutoProtocol {
     /// the pause to allow the protocol to re-wake the state later on.
     fn pause_writing(&mut self) -> PyResult<()> {
         self.transport.pause_writing()?;
-
-        match self.selected {
-            SelectedProtocol::H1 => {
-                self.h1.writing_paused()?;
-            },
-        };
-
         Ok(())
     }
 

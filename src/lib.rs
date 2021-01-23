@@ -13,7 +13,7 @@ mod pyre_server;
 use crate::pyre_server::server::Server;
 use crate::pyre_server::net::listener::NoneBlockingListener;
 use crate::pyre_server::py_callback::CallbackHandler;
-use crate::pyre_server::responders::data_callback::DataSender;
+use crate::pyre_server::responders::sender::DataSender;
 
 use pyo3::prelude::*;
 use pyo3::wrap_pyfunction;
