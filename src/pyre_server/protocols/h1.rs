@@ -105,7 +105,7 @@ impl ProtocolBuffers for H1Protocol {
 
         let _ = buffer.split_to(len);
 
-        self.on_request_parse(&mut request);
+        self.on_request_parse(&mut request)?;
 
         self.transport()?.resume_writing()?;
         Ok(())
