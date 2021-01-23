@@ -1,7 +1,7 @@
 use pyo3::prelude::*;
 use pyo3::exceptions::PyRuntimeError;
 
-use crossbeam::channel::Sender;
+use crossbeam::channel::{Sender, Receiver, bounded};
 use bytes::Bytes;
 
 
@@ -34,4 +34,13 @@ impl DataSender {
 
         Ok(())
     }
+}
+
+
+pub struct SenderHandler {
+    /// The sender half for sending body chunks.
+    sender_tx: Sender<SenderPayload>,
+
+    /// The receiver half for sending body chunks.
+    sender_rx: Receiver<SenderPayload>,
 }

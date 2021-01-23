@@ -37,22 +37,18 @@ pub struct H1Protocol {
     /// The python callback handler.
     callback: CallbackHandler,
 
-    /// The sender half for sending body chunks.
-    sender_tx: Sender<SenderPayload>,
 
-    /// The receiver half for sending body chunks.
-    sender_rx: Receiver<SenderPayload>,
 }
 
 impl H1Protocol {
     /// Create a new H1Protocol instance.
     pub fn new(callback: CallbackHandler) -> Self {
-        let (sender_tx, sender_rx) = unbounded();
+        //let (sender_tx, sender_rx) = unbounded();
         Self {
             maybe_transport: None,
             callback,
-            sender_tx,
-            sender_rx,
+            //sender_tx,
+            //sender_rx,
         }
     }
 
@@ -112,9 +108,9 @@ impl ProtocolBuffers for H1Protocol {
     }
 
     fn fill_write_buffer(&mut self, buffer: &mut BytesMut) -> PyResult<()> {
-        while let Ok((_more_body, buff)) = self.sender_rx.try_recv() {
-            buffer.extend(buff);
-        }
+        //while let Ok((_more_body, buff)) = self.sender_rx.try_recv() {
+        //    buffer.extend(buff);
+        //}
 
         Ok(())
     }
@@ -148,8 +144,8 @@ impl H1Protocol {
             parsed_vec.push((header.name, header.value))
         }
 
-        let responder = DataSender::new(self.sender_tx.clone());
-        self.callback.invoke((responder,))?;
+        //let responder = DataSender::new(self.sender_tx.clone());
+        //self.callback.invoke((responder,))?;
 
         Ok(())
     }
