@@ -1,6 +1,6 @@
 import asyncio
 
-from pyre.server import AsyncioExecutor, Server
+from pyre.server import Server
 
 
 loop = asyncio.SelectorEventLoop()
@@ -21,8 +21,7 @@ async def suprise(send, *args):
 async def main():
     print("Running @ http://127.0.0.1:8080")
 
-    executor = AsyncioExecutor(loop=loop)
-    server = Server(suprise, executor=executor, host="0.0.0.0", port=8080)
+    server = Server(suprise, host="0.0.0.0", port=8080)
     server.start()
     try:
         await server.run_forever()
