@@ -1,10 +1,10 @@
 import asyncio
-
+import uvloop
 from pyre.server import Server
 
-
-loop = asyncio.SelectorEventLoop()
-asyncio.set_event_loop(loop)
+uvloop.install()
+loop = asyncio.get_event_loop()
+#asyncio.set_event_loop(loop)
 
 
 async def suprise(send, *args):

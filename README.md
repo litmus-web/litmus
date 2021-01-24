@@ -8,7 +8,7 @@ A fast asyncronous HTTP server and framework written in Rust for Python.
 ### Why yet another webserver and framework?
 The motivation behind Pyre is to provide a more robust webserver design, unlike Japronto which is only compatible with its own framework; Pyre is ASGI compatible and offers higher performance in raw execution speed without even taking HTTP pipelining or other methods into the equation.
 
-What Pyre certainly isnt is light weight, Pyre preferes to pool memory and re-use allocation rather than trying to use as little memory as possible, although it would be possible to customise the source code and lower the buffer limits to put Pyre into a lighter memory setting.
+What Pyre certainly isnt, is light weight, Pyre preferes to pool memory and re-use allocation rather than trying to use as little memory as possible, although it would be possible to customise the source code and lower the buffer limits to put Pyre into a lighter memory setting.
 
 The framework side of Pyre is designed to add a more OOP and event driven framework rather than yet another Flask copy, this will also be written with a Rust backbone and lazy evaluation to try and make each request as light weight as possible.
 
