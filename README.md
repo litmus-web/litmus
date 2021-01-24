@@ -20,8 +20,10 @@ Pyre aims to provide a HTTP/1, HTTP/2 and Websocket complient protocol written f
 The main server api has been implemented other than the direct protocols, these will become the `H1`, `H2` and `WS` protocol sections, this may seem like alot to do and it is however alot of the code base is re-implementing / re-creating the asyncio streams api to be more rust friendly and high performance.
 
 ### Benchmarks
+
+#### Pre-Alpha Benchmarks
 **Note these benchmarks were taken back in the pre-aplha builds before the most recent set of refractors**
 
-These benchmarks were taken while testing the pre-alpha without HTTP/1 Pipelining using `wrk`, the comparision was Pyre VS Uvicorn which is the current go to performance server.
+These benchmarks were taken while testing the pre-alpha without HTTP/1 Pipelining as neither servers support concurrent pipelining using `wrk`, the comparision was Pyre VS Uvicorn which is the current go to performance server.
 
 ![alt text](https://github.com/Project-Dream-Weaver/Pyre/blob/main/images/bench-pre-alpha.png "Pyre Benchmarks")
