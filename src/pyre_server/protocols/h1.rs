@@ -15,6 +15,7 @@ use pyo3::exceptions::PyRuntimeError;
 
 use std::mem;
 use std::sync::Arc;
+use std::str;
 
 use bytes::{BytesMut, Bytes};
 
@@ -22,6 +23,7 @@ use crossbeam::channel::{Sender, Receiver, unbounded};
 
 use httparse::{Status, parse_chunk_size, Header, Request};
 use http::version::Version;
+use http::header::{CONTENT_LENGTH, TRANSFER_ENCODING};
 
 
 /// The max headers allowed in a single request.
@@ -44,6 +46,10 @@ pub struct H1Protocol {
 
     /// The receiver half handler for ASGI callbacks.
     receiver: ReceiverHandler,
+
+    expected_content_length: usize,
+
+    chunked_encoding: bool,
 }
 
 impl H1Protocol {
@@ -57,6 +63,9 @@ impl H1Protocol {
             callback,
             sender,
             receiver,
+
+            expected_content_length: 0,
+            chunked_encoding: false,
         }
     }
 
@@ -100,11 +109,17 @@ impl ProtocolBuffers for H1Protocol {
         let body = buffer.clone();
 
         let mut request = Request::new(&mut headers);
-        let len = match request.parse(&body) {
-            Ok(status) => status.unwrap(),
+        let status = match request.parse(&body) {
+            Ok(status) => status,
             Err(e) => return Err(PyRuntimeError::new_err(format!(
                 "{:?}", e  // todo remove this, add custom http response.
             )))
+        };
+
+        let len= if status.is_partial() {
+            return Ok(())
+        } else {
+            status.unwrap()
         };
 
         let _ = buffer.split_to(len);
@@ -139,7 +154,7 @@ impl Switchable for H1Protocol {
 }
 
 impl H1Protocol {
-    fn on_request_parse(&self, request: &mut Request) -> PyResult<()> {
+    fn on_request_parse(&mut self, request: &mut Request) -> PyResult<()> {
         let method = request.method
             .expect("Value was None at complete parse");
         let path = request.path
@@ -147,9 +162,12 @@ impl H1Protocol {
         let version = request.version
             .expect("Value was None at complete parse");
 
+
         let headers_new = Python::with_gil(|py| {
             let mut parsed_vec = Vec::with_capacity(request.headers.len());
             for header in request.headers.iter() {
+                self.check_header(&header);
+
                 let converted: Py<PyBytes> = Py::from(PyBytes::new(py, header.value));
                 parsed_vec.push((header.name, converted))
             }
@@ -170,5 +188,18 @@ impl H1Protocol {
         ))?;
 
         Ok(())
+    }
+
+    fn check_header(&mut self, header: &Header) {
+        if header.name == CONTENT_LENGTH {
+            self.expected_content_length = str::from_utf8(header.value)
+                .map(|v| v.parse::<usize>().unwrap_or(0))
+                .unwrap_or(0)
+        } else if header.name == TRANSFER_ENCODING {
+            let lowered = header.value.to_ascii_lowercase();
+            self.chunked_encoding = str::from_utf8(lowered.as_ref())
+                .map(|v| v.contains("chunked"))
+                .unwrap_or(false)
+        }
     }
 }
