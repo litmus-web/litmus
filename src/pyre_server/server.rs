@@ -18,7 +18,7 @@ use crate::pyre_server::py_callback::CallbackHandler;
 /// the callbacks of file descriptor watchers, accepting the clients themselves
 /// from the listener and managing the event loop interactions.
 #[pyclass]
-pub struct Server {
+pub struct _Server {
     /// The max amount of time the listener should be accepted from in
     /// a single poll_accept() callback as to improve performance.
     backlog: usize,
@@ -47,7 +47,7 @@ pub struct Server {
     callback: CallbackHandler,
 }
 
-impl Server {
+impl _Server {
     /// Create a new handler with a given backlog limit that wraps a given
     /// tcp listener and event loop helper.
     pub fn new(
@@ -155,7 +155,7 @@ impl Server {
 }
 
 #[pymethods]
-impl Server {
+impl _Server {
     /// Starts the server by adding a waiter for the listener's file descriptor
     /// for when the listener can accept a client(s).
     fn start(
