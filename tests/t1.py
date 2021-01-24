@@ -10,8 +10,11 @@ loop = asyncio.SelectorEventLoop()
 asyncio.set_event_loop(loop)
 
 
-async def callback(caller: pyre.DataSender):
-    caller(
+async def callback(
+    send: pyre.DataSender,
+    *args,
+):
+    send(
         False,
         b"HTTP/1.1 200 OK\r\n"
         b"Content-Length: 13\r\n"

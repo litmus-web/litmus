@@ -1,37 +1,59 @@
 use pyo3::prelude::*;
 use pyo3::exceptions::PyRuntimeError;
 
-use crossbeam::channel::Sender;
+use crossbeam::channel::{Sender, Receiver, bounded, TrySendError};
 use bytes::Bytes;
 
-
-/// The payload that gets sent to the receiver half of the channel.
-pub type SenderPayload = (bool, Vec<u8>);
+use crate::pyre_server::responders::Payload;
 
 
 /// The callable class that handling communication back to the server protocol.
 #[pyclass]
-pub struct DataSender {
-    tx: Sender<SenderPayload>,
+pub struct DataReceiver {
+    rx: Receiver<Payload>,
 }
 
-impl DataSender {
+impl DataReceiver {
     /// Create a new handler with the given sender.
-    pub fn new(tx: Sender<SenderPayload>) -> Self {
-        Self { tx }
+    pub fn new(rx: Receiver<Payload>) -> Self {
+        Self { rx }
     }
 }
 
 #[pymethods]
-impl DataSender {
+impl DataReceiver {
     /// Invoked by python passing more_body which represents if there
     /// is any more body to expect or not, and the body itself.
     #[call]
-    fn __call__(&self, more_body: bool, body: Vec<u8>) -> PyResult<()> {
-        if let Err(e) = self.tx.send((more_body, body)) {
-            return Err(PyRuntimeError::new_err(format!("{:?}", e)))
-        }
+    fn __call__(&self) -> PyResult<()> {
 
         Ok(())
+    }
+}
+
+
+pub struct ReceiverHandler {
+    /// The sender half for sending body chunks.
+    receiver_tx: Sender<Payload>,
+
+    /// The receiver half for sending body chunks.
+    receiver_rx: Receiver<Payload>,
+}
+
+impl ReceiverHandler {
+    pub fn new() -> Self {
+        let (tx, rx) = bounded(10);
+        Self {
+            receiver_tx: tx,
+            receiver_rx: rx,
+        }
+    }
+
+    pub fn make_handle(&self) -> DataReceiver{
+        DataReceiver::new(self.receiver_rx.clone())
+    }
+
+    pub fn send(&self, data: Payload) -> Result<(), TrySendError<Payload>> {
+        self.receiver_tx.try_send(data)
     }
 }

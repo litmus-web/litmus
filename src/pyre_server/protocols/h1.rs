@@ -6,9 +6,11 @@ use crate::pyre_server::abc::{ProtocolBuffers, BaseTransport};
 use crate::pyre_server::switch::{Switchable, SwitchStatus};
 use crate::pyre_server::transport::Transport;
 use crate::pyre_server::py_callback::CallbackHandler;
-use crate::pyre_server::responders::sender::{DataSender, SenderPayload};
+use crate::pyre_server::responders::sender::SenderHandler;
+use crate::pyre_server::responders::receiver::ReceiverHandler;
 
-use pyo3::PyResult;
+use pyo3::{PyResult, Python, Py};
+use pyo3::types::PyBytes;
 use pyo3::exceptions::PyRuntimeError;
 
 use std::mem;
@@ -37,18 +39,24 @@ pub struct H1Protocol {
     /// The python callback handler.
     callback: CallbackHandler,
 
+    /// The sender half handler for ASGI callbacks.
+    sender: SenderHandler,
 
+    /// The receiver half handler for ASGI callbacks.
+    receiver: ReceiverHandler,
 }
 
 impl H1Protocol {
     /// Create a new H1Protocol instance.
     pub fn new(callback: CallbackHandler) -> Self {
-        //let (sender_tx, sender_rx) = unbounded();
+        let sender = SenderHandler::new();
+        let receiver = ReceiverHandler::new();
+
         Self {
             maybe_transport: None,
             callback,
-            //sender_tx,
-            //sender_rx,
+            sender,
+            receiver,
         }
     }
 
@@ -108,9 +116,9 @@ impl ProtocolBuffers for H1Protocol {
     }
 
     fn fill_write_buffer(&mut self, buffer: &mut BytesMut) -> PyResult<()> {
-        //while let Ok((_more_body, buff)) = self.sender_rx.try_recv() {
-        //    buffer.extend(buff);
-        //}
+        while let Ok((_more_body, buff)) = self.sender.recv() {
+            buffer.extend(buff);
+        }
 
         Ok(())
     }
@@ -139,13 +147,27 @@ impl H1Protocol {
         let version = request.version
             .expect("Value was None at complete parse");
 
-        let mut parsed_vec = Vec::with_capacity(request.headers.len());
-        for header in request.headers.iter() {
-            parsed_vec.push((header.name, header.value))
-        }
+        let headers_new = Python::with_gil(|py| {
+            let mut parsed_vec = Vec::with_capacity(request.headers.len());
+            for header in request.headers.iter() {
+                let converted: Py<PyBytes> = Py::from(PyBytes::new(py, header.value));
+                parsed_vec.push((header.name, converted))
+            }
 
-        //let responder = DataSender::new(self.sender_tx.clone());
-        //self.callback.invoke((responder,))?;
+            parsed_vec
+        });
+
+
+        let sender = self.sender.make_handle();
+        let receiver = self.receiver.make_handle();
+        self.callback.invoke((
+            sender,
+            receiver,
+            headers_new,
+            method,
+            path,
+            version,
+        ))?;
 
         Ok(())
     }
