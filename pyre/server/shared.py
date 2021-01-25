@@ -40,12 +40,12 @@ class PartialTask:
     callback with the give args and kwargs.
     """
 
-    def __init__(self, executor, cb):
+    def __init__(self, executor: asyncio.AbstractEventLoop, cb):
         self.executor = executor
         self.cb = cb
 
     def __call__(self, *args, **kwargs):
-        self.executor.create_task(self.cb(*args, **kwargs))
+        self.executor.call_soon_threadsafe(self.cb, *args)
 
 
 class Server:

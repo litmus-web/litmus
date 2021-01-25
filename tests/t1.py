@@ -1,13 +1,13 @@
 import asyncio
-import uvloop
+# import uvloop
 from pyre.server import Server
 
-uvloop.install()
-loop = asyncio.get_event_loop()
-#asyncio.set_event_loop(loop)
+# uvloop.install()
+loop = asyncio.SelectorEventLoop()
+asyncio.set_event_loop(loop)
 
 
-async def suprise(send, *args):
+def suprise(send, *args):
     send(
         False,
         b"HTTP/1.1 200 OK\r\n"
