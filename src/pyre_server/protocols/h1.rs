@@ -25,6 +25,7 @@ use crate::pyre_server::py_callback::CallbackHandler;
 use crate::pyre_server::responders::sender::SenderHandler;
 use crate::pyre_server::responders::receiver::ReceiverHandler;
 
+
 /// The max headers allowed in a single request.
 const MAX_HEADERS: usize = 100;
 
@@ -146,6 +147,9 @@ impl ProtocolBuffers for H1Protocol {
         Ok(())
     }
 
+    /// Fills the passed buffer with any messages enqueued to be sent.
+    ///
+    /// Todo: This needs to have some flot control added.
     fn fill_write_buffer(&mut self, buffer: &mut BytesMut) -> PyResult<()> {
         while let Ok((_more_body, buff)) = self.sender.recv() {
             buffer.extend(buff);
@@ -154,6 +158,7 @@ impl ProtocolBuffers for H1Protocol {
         Ok(())
     }
 
+    /// Pauses writing removing the event listeners to close the socket.
     fn eof_received(&mut self) -> PyResult<()> {
         self.transport()?.pause_reading()
     }
@@ -170,6 +175,8 @@ impl Switchable for H1Protocol {
 }
 
 impl H1Protocol {
+    /// Turns all the headers into Python type objects and invokes the
+    /// python callback.
     fn on_request_parse(&mut self, request: &mut Request) -> PyResult<()> {
         let method = request.method
             .expect("Method was None at complete parse");
@@ -206,6 +213,8 @@ impl H1Protocol {
         Ok(())
     }
 
+    /// Checks a given header to see if it is to do with the request's
+    /// body size and type, e.g. Chunked encoding.
     fn check_header(&mut self, header: &Header) {
         if header.name == CONTENT_LENGTH {
             self.expected_content_length = str::from_utf8(header.value)
