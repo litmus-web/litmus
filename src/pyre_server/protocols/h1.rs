@@ -45,8 +45,11 @@ pub struct H1Protocol {
     /// The receiver half handler for ASGI callbacks.
     receiver: ReceiverHandler,
 
+    /// The length of the body either as a chunk or the whole
+    /// length depending on if the request uses chunked encoding or not.
     expected_content_length: usize,
 
+    /// If the request uses chunked encoding for it's body.
     chunked_encoding: bool,
 }
 
@@ -67,6 +70,12 @@ impl H1Protocol {
         }
     }
 
+    /// Get the set transport or raise an error.
+    ///
+    /// This is mostly just a helper function to stop so many .unwrap()'s
+    /// it also allows the user to be alerted in a more readable fashion
+    /// instead of a panic! which to the user will be fairly unreadable and
+    /// confusing.
     #[inline]
     fn transport(&self) -> PyResult<&Transport> {
         return if let Some(t) = self.maybe_transport.as_ref() {
