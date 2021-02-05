@@ -7,7 +7,7 @@ loop = asyncio.SelectorEventLoop()
 asyncio.set_event_loop(loop)
 
 
-def suprise(send, *args):
+async def suprise(send, *args):
     send(
         False,
         b"HTTP/1.1 200 OK\r\n"

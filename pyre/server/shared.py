@@ -45,7 +45,7 @@ class PartialTask:
         self.cb = cb
 
     def __call__(self, *args, **kwargs):
-        self.executor.call_soon_threadsafe(self.cb, *args)
+        self.executor.create_task(self.cb(*args))
 
 
 class Server:

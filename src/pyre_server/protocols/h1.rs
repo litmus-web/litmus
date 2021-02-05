@@ -2,13 +2,6 @@
 // can't upgrade yet
 #![allow(deprecated)]
 
-use crate::pyre_server::abc::{ProtocolBuffers, BaseTransport};
-use crate::pyre_server::switch::{Switchable, SwitchStatus};
-use crate::pyre_server::transport::Transport;
-use crate::pyre_server::py_callback::CallbackHandler;
-use crate::pyre_server::responders::sender::SenderHandler;
-use crate::pyre_server::responders::receiver::ReceiverHandler;
-
 use pyo3::{PyResult, Python, Py};
 use pyo3::types::PyBytes;
 use pyo3::exceptions::PyRuntimeError;
@@ -25,10 +18,15 @@ use httparse::{Status, parse_chunk_size, Header, Request};
 use http::version::Version;
 use http::header::{CONTENT_LENGTH, TRANSFER_ENCODING};
 
+use crate::pyre_server::abc::{ProtocolBuffers, BaseTransport};
+use crate::pyre_server::switch::{Switchable, SwitchStatus};
+use crate::pyre_server::transport::Transport;
+use crate::pyre_server::py_callback::CallbackHandler;
+use crate::pyre_server::responders::sender::SenderHandler;
+use crate::pyre_server::responders::receiver::ReceiverHandler;
 
 /// The max headers allowed in a single request.
 const MAX_HEADERS: usize = 100;
-
 
 
 /// The protocol to add handling for the HTTP/1.x protocol.
@@ -156,11 +154,11 @@ impl Switchable for H1Protocol {
 impl H1Protocol {
     fn on_request_parse(&mut self, request: &mut Request) -> PyResult<()> {
         let method = request.method
-            .expect("Value was None at complete parse");
+            .expect("Method was None at complete parse");
         let path = request.path
-            .expect("Value was None at complete parse");
+            .expect("Path was None at complete parse");
         let version = request.version
-            .expect("Value was None at complete parse");
+            .expect("Version was None at complete parse");
 
 
         let headers_new = Python::with_gil(|py| {
