@@ -105,6 +105,15 @@ impl H1Protocol {
 }
 
 impl ProtocolBuffers for H1Protocol {
+    /// Parses data received from the given buffer and separates the content
+    /// accordingly.
+    ///
+    /// This callback is invoked just after the auto protocol's buffer has
+    /// been acquired and filled. It's not guaranteed to be filled but it is
+    /// guaranteed to have at least been filled up with 1 or more bytes of data.
+    ///
+    /// Upon no data being read signalling a EOF the eof_received callback is
+    /// invoked and handled instead.
     fn data_received(&mut self, buffer: &mut BytesMut) -> PyResult<()> {
         // This should be fine as it is guaranteed to be initialised
         // before we use it, just waiting for the ability to use
