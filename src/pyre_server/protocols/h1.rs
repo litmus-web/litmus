@@ -191,8 +191,9 @@ impl H1Protocol {
             for header in request.headers.iter() {
                 self.check_header(&header);
 
-                let converted: Py<PyBytes> = Py::from(PyBytes::new(py, header.value));
-                parsed_vec.push((header.name, converted))
+                let converted1: Py<PyBytes> = Py::from(PyBytes::new(py, header.name.as_bytes()));
+                let converted2: Py<PyBytes> = Py::from(PyBytes::new(py, header.value));
+                parsed_vec.push((converted1, converted2))
             }
 
             parsed_vec

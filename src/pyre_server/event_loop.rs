@@ -20,16 +20,16 @@ pub struct EventLoop {
 impl EventLoop {
     /// Build a new event loop helper built off the given callbacks.
     pub fn new(
-        _add_reader: PyObject,
-        _remove_reader: PyObject,
-        _add_writer: PyObject,
-        _remove_writer: PyObject,
+        add_reader: PyObject,
+        remove_reader: PyObject,
+        add_writer: PyObject,
+        remove_writer: PyObject,
     ) -> Self {
         Self {
-            add_reader_: CheapPyObject::new(_add_reader),
-            remove_reader_: CheapPyObject::new(_remove_reader),
-            add_writer_: CheapPyObject::new(_add_writer),
-            remove_writer_: CheapPyObject::new(_remove_writer),
+            add_reader_: CheapPyObject::new(add_reader),
+            remove_reader_: CheapPyObject::new(remove_reader),
+            add_writer_: CheapPyObject::new(add_writer),
+            remove_writer_: CheapPyObject::new(remove_writer),
         }
     }
 }

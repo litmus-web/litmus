@@ -7,15 +7,19 @@ loop = asyncio.SelectorEventLoop()
 asyncio.set_event_loop(loop)
 
 
-async def suprise(send, *args):
-    send(
-        False,
-        b"HTTP/1.1 200 OK\r\n"
-        b"Content-Length: 13\r\n"
-        b"Server: Pyre\r\n"
-        b"\r\n"
-        b"Hello, World!"
-    )
+async def suprise(send_cb, receiver_cb, *args):
+    async def send(payload):
+        more_body = payload.get("more_body", False)
+        body = payload.get("body", b"")
+        send_cb(
+            more_body,
+            body
+        )
+
+    async def receive():
+        return {'more_body': False, 'body': b""}
+
+    print(args)
 
 
 async def main():

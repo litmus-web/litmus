@@ -27,7 +27,7 @@ pub struct _Server {
     listener: NoneBlockingListener,
 
     /// The key Python event loop callbacks and interactions helper.
-    _event_loop: Option<EventLoop>,
+    event_loop_: Option<EventLoop>,
 
     /// A internal counter for assigning new client indexes
     client_counter: usize,
@@ -66,7 +66,7 @@ impl _Server {
             backlog,
 
             listener,
-            _event_loop: None,
+            event_loop_: None,
 
             client_counter,
             clients,
@@ -83,7 +83,7 @@ impl _Server {
     /// being init first.
     #[inline]
     fn event_loop(&self) -> PyResult<&EventLoop> {
-        if let Some(v) = self._event_loop.as_ref() {
+        if let Some(v) = self.event_loop_.as_ref() {
             Ok(v)
         } else {
             Err(PyRuntimeError::new_err(
@@ -199,7 +199,7 @@ impl _Server {
             remove_writer,
         );
 
-        self._event_loop = Some(event_loop);
+        self.event_loop_ = Some(event_loop);
     }
 
     fn len_clients(&self) -> usize {
