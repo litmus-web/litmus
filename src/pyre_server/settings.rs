@@ -2,32 +2,36 @@ use http::Version;
 use std::net::SocketAddr;
 
 
-const HTTP_STR: &str = "http";
-const HTTPS_STR: &str = "http";
-
-
+/// The HTTP schema.
+///
+/// The selection of whether or not this is HTTP or HTTPS depends on the
+/// socket selected at creation.
+#[derive(Debug, Clone)]
 pub enum Schema {
-    HTTP(&'static str),
-    HTTPS(&'static str),
+    HTTP,
+    HTTPS,
 }
 
 
+/// The constant server settings that are used to construct a given
+/// ASGI scope for the web server.
+#[derive(Debug, Clone)]
 pub struct Settings {
-    schema: Schema,
+    schema: schema,
     server_addr: SocketAddr,
-
 }
 
 impl Settings {
+    /// Create a new settings instance with a given set of specs
     pub fn new(
         is_tls: bool,
         server_addr: SocketAddr,
     ) -> Self {
 
         let schema = if is_tls {
-            Schema::HTTP(HTTP_STR)
+            Schema::HTTP
         } else {
-            Schema::HTTPS(HTTPS_STR)
+            Schema::HTTPS
         };
 
         Self {
