@@ -251,6 +251,7 @@ impl H1Protocol {
         let sender = self.sender.make_handle();
         let receiver = self.receiver.make_handle();
         self.callback.invoke((
+            scope,
             sender,
             receiver,
         ))?;

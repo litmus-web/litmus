@@ -1,38 +1,48 @@
-use pyo3::types::PyBytes;
 use pyo3::Py;
+use pyo3::types::PyBytes;
 
+/// A set of headers.
+///
+/// Each header is a (name, value) pair.
 type Headers = Vec<(Py<PyBytes>, Py<PyBytes>)>;
+
+/// A simple tuple containing the ip string and port
 type SocketDetails = (String, u16);
 
+/// The type of the scope call
 pub const SCOPE_TYPE: &str = "http";
+
+/// A temporary root path constant todo: allow this to be set
 pub const TEMP_ROOT_PATH: &str = "";
 
+/// A tuple containing details of the ASGI specification.
+pub type ASGISpec = (&'static str, &'static str);
+
+/// Version of the ASGI spec
 const SCOPE_VERSION: &str = "";
+
+/// Version of the ASGI HTTP spec this server understands
 const SCOPE_SPEC_VERSION: &str = "";
 
+/// The HTTP/1.0 specification
 pub const HTTP_10: &str = "1.0";
-pub const HTTP_11: &str = "1.1";
-pub const _HTTP_2: &str = "2";
 
+/// The HTTP/1.1 specification
+pub const HTTP_11: &str = "1.1";
+
+/// The HTTP/2 specification
+pub const _HTTP_2: &str = "2";
 
 
 /// The ASGI specification.
 #[allow(unused)]
-pub const SCOPE_SPEC: ASGISpec = ASGISpec {
-    /// Version of the ASGI spec
-    version: SCOPE_VERSION,
+pub const SCOPE_SPEC: ASGISpec = (
+    // Version of the ASGI spec
+    SCOPE_VERSION,
 
-    /// Version of the ASGI HTTP spec this server understands
-    spec_version: SCOPE_SPEC_VERSION
-};
-
-
-/// The ASGI specification
-#[allow(unused)]
-pub struct ASGISpec {
-    version: &'static str,
-    spec_version: &'static str,
-}
+    // Version of the ASGI HTTP spec this server understands
+    SCOPE_SPEC_VERSION,
+);
 
 
 /// The asgi scope that contains all state of the server and
