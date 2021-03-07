@@ -8,6 +8,7 @@ use crate::pyre_server::protocol_manager::{AutoProtocol, SelectedProtocol};
 use crate::pyre_server::transport::Transport;
 use crate::pyre_server::py_callback::CallbackHandler;
 use crate::pyre_server::settings::Settings;
+use std::net::SocketAddr;
 
 
 /// A wrapper around the standard tcp stream and addr to produce a interface
@@ -47,7 +48,10 @@ impl Client {
         settings: Settings,
     ) -> PyResult<Self> {
 
-        let transport = Transport::new(event_loop.clone());
+        let transport = Transport::new(
+            handle.addr,
+            event_loop.clone(),
+            );
 
         // Default is H1 for now, maybe add configurable option later.
         let protocol = AutoProtocol::new(
@@ -81,7 +85,10 @@ impl Client {
 
         self.is_idle = false;
 
-        let transport = Transport::new(self.event_loop.clone());
+        let transport = Transport::new(
+            self.handle.addr,
+            self.event_loop.clone()
+        );
         self.protocol.new_connection(transport)?;
 
         Ok(())

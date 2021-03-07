@@ -1,4 +1,3 @@
-use http::Version;
 use std::net::SocketAddr;
 
 
@@ -12,13 +11,22 @@ pub enum Schema {
     HTTPS,
 }
 
+impl Schema {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            &Self::HTTP => "http",
+            &Self::HTTPS => "https",
+        }
+    }
+}
+
 
 /// The constant server settings that are used to construct a given
 /// ASGI scope for the web server.
 #[derive(Debug, Copy, Clone)]
 pub struct Settings {
-    schema: Schema,
-    server_addr: SocketAddr,
+    pub schema: Schema,
+    pub server_addr: SocketAddr,
 }
 
 impl Settings {

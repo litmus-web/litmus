@@ -2,19 +2,22 @@ use crate::pyre_server::abc::BaseTransport;
 use crate::pyre_server::event_loop::PreSetEventLoop;
 
 use pyo3::PyResult;
+use std::net::SocketAddr;
 
 
 /// Handles the higher level controls for a protocol to use e.g.
 /// pausing and resuming reading from the event loop.
 #[derive(Clone)]
 pub struct Transport {
+    pub client: SocketAddr,
     event_loop: PreSetEventLoop
 }
 
 impl Transport {
     /// Create a new transport instance bound to the given pre-set event loop
-    pub fn new(event_loop: PreSetEventLoop) -> Self {
+    pub fn new(client: SocketAddr, event_loop: PreSetEventLoop) -> Self {
         Self {
+            client,
             event_loop
         }
     }

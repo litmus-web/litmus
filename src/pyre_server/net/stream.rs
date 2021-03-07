@@ -28,13 +28,13 @@ pub struct TcpHandle {
 
     /// The remote's given socket addr as given by the tcp listener upon
     /// accepting the client / connection.
-    _addr: SocketAddr,
+    pub addr: SocketAddr,
 }
 
 impl TcpHandle {
     /// Create a new tcp handle wrapping the given stream and addr.
     pub fn new(stream: TcpStream, addr: SocketAddr) -> Self {
-        Self { stream, _addr: addr }
+        Self { stream, addr }
     }
 
     /// Returns the raw file descriptor of the socket.

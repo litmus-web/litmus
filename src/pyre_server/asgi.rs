@@ -1,19 +1,24 @@
+use pyo3::types::PyBytes;
+use pyo3::Py;
 
-
-type Headers = ();
+type Headers = Vec<(Py<PyBytes>, Py<PyBytes>)>;
 type SocketDetails = (String, u16);
 
-const SCOPE_TYPE: &str = "http";
+pub const SCOPE_TYPE: &str = "http";
+pub const TEMP_ROOT_PATH: &str = "";
+
 const SCOPE_VERSION: &str = "";
 const SCOPE_SPEC_VERSION: &str = "";
 
-const HTTP_10: &str = "1.0";
-const HTTP_11: &str = "1.1";
-const HTTP_2: &str = "2";
+pub const HTTP_10: &str = "1.0";
+pub const HTTP_11: &str = "1.1";
+pub const _HTTP_2: &str = "2";
+
 
 
 /// The ASGI specification.
-const SCOPE_SPEC: ASGISpec = ASGISpec {
+#[allow(unused)]
+pub const SCOPE_SPEC: ASGISpec = ASGISpec {
     /// Version of the ASGI spec
     version: SCOPE_VERSION,
 
@@ -23,6 +28,7 @@ const SCOPE_SPEC: ASGISpec = ASGISpec {
 
 
 /// The ASGI specification
+#[allow(unused)]
 pub struct ASGISpec {
     version: &'static str,
     spec_version: &'static str,
@@ -31,7 +37,7 @@ pub struct ASGISpec {
 
 /// The asgi scope that contains all state of the server and
 /// request.
-pub type AsgiScopeArgs = (
+pub type AsgiScopeArgs<'a> = (
     // type
     //
     // The type of scope, for a request this is "http"
@@ -50,35 +56,29 @@ pub type AsgiScopeArgs = (
     // method
     //
     // The HTTP method name, in uppercase.
-    &'static str,
+    &'a str,
 
     // scheme
     //
     // URL scheme portion, either http or https.
-    String,
+    &'static str,
 
     // path
     //
     // HTTP request target excluding any query string,
     // with percent-encoded sequences and UTF-8 byte sequences
     // decoded into characters.
-    String,
-
-    // raw_path
-    //
-    // The original HTTP path component unmodified from the bytes
-    // that were received by the web server.
-    String,
+    &'a str,
 
     // query_string
     //
     // URL portion after the ?, percent-encoded.
-    String,
+    &'a str,
 
     // root_path
     //
     // The root path this application is mounted at
-    String,
+    &'a str,
 
     // headers
     //

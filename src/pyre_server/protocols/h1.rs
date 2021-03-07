@@ -14,8 +14,7 @@ use bytes::{BytesMut, Bytes};
 
 use crossbeam::channel::{Sender, Receiver, unbounded};
 
-use httparse::{Status, parse_chunk_size, Header, Request};
-use http::version::Version;
+use httparse::{Header, Request};
 use http::header::{CONTENT_LENGTH, TRANSFER_ENCODING};
 
 use crate::pyre_server::abc::{ProtocolBuffers, BaseTransport};
@@ -25,6 +24,7 @@ use crate::pyre_server::py_callback::CallbackHandler;
 use crate::pyre_server::responders::sender::SenderHandler;
 use crate::pyre_server::responders::receiver::ReceiverHandler;
 use crate::pyre_server::settings::Settings;
+use crate::pyre_server::asgi;
 
 
 /// The max headers allowed in a single request.
@@ -192,6 +192,24 @@ impl H1Protocol {
         let version = request.version
             .expect("Version was None at complete parse");
 
+        let version = if version == 0 {
+            asgi::HTTP_10
+        } else if version == 1 {
+            asgi::HTTP_11
+        } else {
+            unreachable!()
+        };
+
+        let (path, query) = {
+            let mut iter = path.splitn(1, "?");
+
+            let path = iter.next()
+                .expect("failed to extract base host path");
+
+            let query = iter.next().unwrap_or("");
+
+            (path, query)
+        };
 
         let headers_new = Python::with_gil(|py| {
             let mut parsed_vec = Vec::with_capacity(request.headers.len());
@@ -206,16 +224,35 @@ impl H1Protocol {
             parsed_vec
         });
 
+        let server = (
+            self.settings.server_addr.ip().to_string(),
+            self.settings.server_addr.port(),
+        );
+
+        let client = (
+            self.transport()?.client.ip().to_string(),
+            self.transport()?.client.port(),
+        );
+
+        let scope: asgi::AsgiScopeArgs = (
+            asgi::SCOPE_TYPE,
+            asgi::SCOPE_SPEC,
+            version,
+            method,
+            self.settings.schema.as_str(),
+            path,
+            query,
+            asgi::TEMP_ROOT_PATH,
+            headers_new,
+            server,
+            client,
+        );
 
         let sender = self.sender.make_handle();
         let receiver = self.receiver.make_handle();
         self.callback.invoke((
             sender,
             receiver,
-            headers_new,
-            method,
-            path,
-            version,
         ))?;
 
         Ok(())
