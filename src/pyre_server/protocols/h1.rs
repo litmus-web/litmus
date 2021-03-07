@@ -24,6 +24,7 @@ use crate::pyre_server::transport::Transport;
 use crate::pyre_server::py_callback::CallbackHandler;
 use crate::pyre_server::responders::sender::SenderHandler;
 use crate::pyre_server::responders::receiver::ReceiverHandler;
+use crate::pyre_server::settings::Settings;
 
 
 /// The max headers allowed in a single request.
@@ -36,6 +37,9 @@ pub struct H1Protocol {
     /// is not initialised before it starts handling interactions but this
     /// should never happen.
     maybe_transport: Option<Transport>,
+
+    /// The server configuration used to construct a ASGI scope.
+    settings: Settings,
 
     /// The python callback handler.
     callback: CallbackHandler,
@@ -56,12 +60,14 @@ pub struct H1Protocol {
 
 impl H1Protocol {
     /// Create a new H1Protocol instance.
-    pub fn new(callback: CallbackHandler) -> Self {
+    pub fn new(settings: Settings, callback: CallbackHandler) -> Self {
         let sender = SenderHandler::new();
         let receiver = ReceiverHandler::new();
 
         Self {
             maybe_transport: None,
+
+            settings,
             callback,
             sender,
             receiver,
@@ -109,9 +115,10 @@ impl ProtocolBuffers for H1Protocol {
     /// Parses data received from the given buffer and separates the content
     /// accordingly.
     ///
-    /// This callback is invoked just after the auto protocol's buffer has
-    /// been acquired and filled. It's not guaranteed to be filled but it is
-    /// guaranteed to have at least been filled up with 1 or more bytes of data.
+    /// This callback is invoked just after the auto protocol's buffer
+    /// has been acquired and filled. It's not guaranteed to be filled
+    /// fully but it is guaranteed to have at least been filled up with
+    /// one or more bytes of data.
     ///
     /// Upon no data being read signalling a EOF the eof_received callback is
     /// invoked and handled instead.

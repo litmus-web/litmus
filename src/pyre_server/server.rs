@@ -12,6 +12,8 @@ use crate::pyre_server::net::listener::{NoneBlockingListener, Status};
 use crate::pyre_server::net::stream::TcpHandle;
 use crate::pyre_server::event_loop::{PreSetEventLoop, EventLoop};
 use crate::pyre_server::py_callback::CallbackHandler;
+use crate::pyre_server::settings::Settings;
+use std::net::SocketAddr;
 
 
 /// A handler the managers all clients of a given TcpListener, controlling
@@ -45,6 +47,9 @@ pub struct _Server {
     /// The python task callback, this creates a callback task to
     /// Python when the server is ready to call it.
     callback: CallbackHandler,
+
+    /// The server configuration used to construct a ASGI scope.
+    settings: Settings,
 }
 
 impl _Server {
@@ -57,24 +62,25 @@ impl _Server {
 
         keep_alive: Duration,
         idle_max: Duration,
+
+        socket_addr: SocketAddr,
     ) -> Self {
+
+        let settings = Settings::new(false, socket_addr);
 
         let client_counter: usize = 0;
         let clients = FxHashMap::default();
 
         Self {
             backlog,
-
             listener,
             event_loop_: None,
-
             client_counter,
             clients,
-
             keep_alive,
             idle_max,
-
             callback,
+            settings
         }
     }
 
@@ -145,6 +151,7 @@ impl _Server {
                 handle,
                 loop_,
                 self.callback.clone(),
+                self.settings,
             )?;
 
             self.clients.insert(index, cli);

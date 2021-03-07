@@ -7,6 +7,7 @@ use crate::pyre_server::event_loop::PreSetEventLoop;
 use crate::pyre_server::protocol_manager::{AutoProtocol, SelectedProtocol};
 use crate::pyre_server::transport::Transport;
 use crate::pyre_server::py_callback::CallbackHandler;
+use crate::pyre_server::settings::Settings;
 
 
 /// A wrapper around the standard tcp stream and addr to produce a interface
@@ -19,9 +20,12 @@ pub struct Client {
     /// with the low level socket across difference os.
     handle: TcpHandle,
 
-    /// A `ProtoManager` that controls the swapping and interfacing of
+    /// A manager that controls the swapping and interfacing of
     /// multiple protocols.
     protocol: AutoProtocol,
+
+    /// The server configuration used to construct a ASGI scope.
+    settings: Settings,
 
     /// Represents if the client is idle because the client has closed
     /// the connection or the protocol has closed the connection.
@@ -40,12 +44,14 @@ impl Client {
         handle: TcpHandle,
         event_loop: PreSetEventLoop,
         callback: CallbackHandler,
+        settings: Settings,
     ) -> PyResult<Self> {
 
         let transport = Transport::new(event_loop.clone());
 
         // Default is H1 for now, maybe add configurable option later.
         let protocol = AutoProtocol::new(
+            settings,
             SelectedProtocol::H1,
             transport,
             callback,
@@ -55,6 +61,7 @@ impl Client {
             event_loop,
             handle,
             protocol,
+            settings,
 
             is_idle: false,
             last_time: Instant::now(),

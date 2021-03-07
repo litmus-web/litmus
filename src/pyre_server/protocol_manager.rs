@@ -6,6 +6,7 @@ use crate::pyre_server::switch::{Switchable, SwitchStatus};
 use crate::pyre_server::protocols::h1;
 use crate::pyre_server::transport::Transport;
 use crate::pyre_server::py_callback::CallbackHandler;
+use crate::pyre_server::settings::Settings;
 
 
 const MAX_BUFFER_LIMIT: usize = 256 * 1024;
@@ -44,12 +45,13 @@ impl AutoProtocol {
     /// Creates a new auto protocol with the protocol set the specified
     /// `SelectedProtocol` enum.
     pub fn new(
+        settings: Settings,
         selected: SelectedProtocol,
         transport: Transport,
         callback: CallbackHandler,
     ) -> PyResult<Self> {
 
-        let mut h1 = h1::H1Protocol::new(callback);
+        let mut h1 = h1::H1Protocol::new(settings, callback);
 
         h1.new_connection(transport.clone())?;
 

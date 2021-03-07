@@ -24,6 +24,7 @@ use crate::pyre_server::responders::receiver::DataReceiver;
 use pyo3::prelude::*;
 use pyo3::wrap_pyfunction;
 use std::time::Duration;
+use std::net::SocketAddr;
 
 
 /// Creates a client handler instance linked to a TcpListener and event loop.
@@ -50,6 +51,7 @@ fn create_server(
 ) -> PyResult<_Server> {
     let binder = format!("{}:{}", host, port);
 
+    let socket_addr: SocketAddr = binder.clone().parse().unwrap();
     let listener = NoneBlockingListener::bind(&binder)?;
     let callback = CallbackHandler::new(callback);
 
@@ -61,7 +63,8 @@ fn create_server(
         listener,
         callback,
         keep_alive,
-        idle_max
+        idle_max,
+        socket_addr,
     );
 
     Ok(new_handler)

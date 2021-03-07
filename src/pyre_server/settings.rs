@@ -6,7 +6,7 @@ use std::net::SocketAddr;
 ///
 /// The selection of whether or not this is HTTP or HTTPS depends on the
 /// socket selected at creation.
-#[derive(Debug, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub enum Schema {
     HTTP,
     HTTPS,
@@ -15,9 +15,9 @@ pub enum Schema {
 
 /// The constant server settings that are used to construct a given
 /// ASGI scope for the web server.
-#[derive(Debug, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub struct Settings {
-    schema: schema,
+    schema: Schema,
     server_addr: SocketAddr,
 }
 
