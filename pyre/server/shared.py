@@ -61,6 +61,7 @@ class Server:
             idle_max: int = -1,
             loop: asyncio.AbstractEventLoop = None
     ):
+        self.app = app
         self.host = host
         self.port = port
         self.debug = debug
@@ -70,7 +71,7 @@ class Server:
         self.loop = loop or asyncio.get_event_loop()
 
         self._waiter = self.loop.create_future()
-        self._factory = PartialTask(self.loop, app)
+        self._factory = PartialTask(self.loop, self.__app)
 
         self._server: _Server = create_server(
             self.host,
@@ -99,6 +100,26 @@ class Server:
         if self.idle_max > 0:
             self.loop.create_task(self.idle_max_ticker())
         self._server.poll_accept()
+
+    async def __app(self, scope, send, receive):
+        scope = {
+            "type": scope[0],
+            "asgi": {
+                "version": scope[1][0],
+                "spec_version": scope[1][1],
+            },
+            "http_version": scope[2],
+            "method": scope[3],
+            "scheme": scope[4],
+            "path": scope[5],
+            "query": scope[6],
+            "root_path": scope[7],
+            "headers": scope[8],
+            "client": scope[9],
+            "server": scope[10],
+        }
+
+        await self.app(scope, send, receive)
 
     async def run_forever(self):
         await self._waiter

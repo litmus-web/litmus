@@ -19,10 +19,10 @@ pub const TEMP_ROOT_PATH: &str = "";
 pub type ASGISpec = (&'static str, &'static str);
 
 /// Version of the ASGI spec
-const SCOPE_VERSION: &str = "";
+const SCOPE_VERSION: &str = "3.0";
 
 /// Version of the ASGI HTTP spec this server understands
-const SCOPE_SPEC_VERSION: &str = "";
+const SCOPE_SPEC_VERSION: &str = "2.0";
 
 /// The HTTP/1.0 specification
 pub const HTTP_10: &str = "1.0";

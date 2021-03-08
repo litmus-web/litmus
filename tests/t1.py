@@ -8,7 +8,14 @@ asyncio.set_event_loop(loop)
 
 
 async def suprise(scope, send, receive):
-    print(scope, send, receive)
+    send(
+        False,
+        b"HTTP/1.1 200 OK\r\n"
+        b"Content-Length: 13\r\n"
+        b"Server: Pyre\r\n"
+        b"\r\n"
+        b"Hello, World!"
+    )
 
 
 async def main():
