@@ -7,12 +7,9 @@ use pyo3::types::PyBytes;
 use pyo3::exceptions::PyRuntimeError;
 
 use std::mem;
-use std::sync::Arc;
 use std::str;
 
-use bytes::{BytesMut, Bytes};
-
-use crossbeam::channel::{Sender, Receiver, unbounded};
+use bytes::BytesMut;
 
 use httparse::{Header, Request};
 use http::header::{CONTENT_LENGTH, TRANSFER_ENCODING};

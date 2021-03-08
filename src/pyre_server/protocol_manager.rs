@@ -131,7 +131,7 @@ impl SocketCommunicator for AutoProtocol {
 
     /// Called when data is able to be read from the socket, the returned
     /// buffer is filled and then the read_buffer_filled callback is invoked.
-    fn read_buffer_filled(&mut self, amount: usize) -> PyResult<()> {
+    fn read_buffer_filled(&mut self, _amount: usize) -> PyResult<()> {
         return match self.selected {
             SelectedProtocol::H1 => {
                 self.h1.data_received(&mut self.reader_buffer)

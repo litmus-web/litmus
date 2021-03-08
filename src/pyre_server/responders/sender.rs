@@ -3,8 +3,6 @@ use pyo3::exceptions::PyRuntimeError;
 
 use crossbeam::channel::{Sender, Receiver, bounded, TryRecvError};
 
-use bytes::Bytes;
-
 use crate::pyre_server::responders::Payload;
 
 

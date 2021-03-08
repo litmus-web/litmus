@@ -1,5 +1,5 @@
 use std::net::{TcpStream, SocketAddr, Shutdown};
-use std::io::{self, Read, Write, ErrorKind};
+use std::io::{Read, Write, ErrorKind};
 
 #[cfg(windows)]
 use std::os::windows::io::AsRawSocket;

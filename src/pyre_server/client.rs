@@ -8,7 +8,6 @@ use crate::pyre_server::protocol_manager::{AutoProtocol, SelectedProtocol};
 use crate::pyre_server::transport::Transport;
 use crate::pyre_server::py_callback::CallbackHandler;
 use crate::pyre_server::settings::Settings;
-use std::net::SocketAddr;
 
 
 /// A wrapper around the standard tcp stream and addr to produce a interface
@@ -24,9 +23,6 @@ pub struct Client {
     /// A manager that controls the swapping and interfacing of
     /// multiple protocols.
     protocol: AutoProtocol,
-
-    /// The server configuration used to construct a ASGI scope.
-    settings: Settings,
 
     /// Represents if the client is idle because the client has closed
     /// the connection or the protocol has closed the connection.
@@ -65,7 +61,6 @@ impl Client {
             event_loop,
             handle,
             protocol,
-            settings,
 
             is_idle: false,
             last_time: Instant::now(),
