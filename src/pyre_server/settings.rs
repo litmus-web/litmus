@@ -37,9 +37,9 @@ impl Settings {
     ) -> Self {
 
         let schema = if is_tls {
-            Schema::HTTP
-        } else {
             Schema::HTTPS
+        } else {
+            Schema::HTTP
         };
 
         Self {

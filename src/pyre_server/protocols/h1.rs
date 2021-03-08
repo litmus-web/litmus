@@ -13,6 +13,7 @@ use bytes::BytesMut;
 
 use httparse::{Header, Request};
 use http::header::{CONTENT_LENGTH, TRANSFER_ENCODING};
+use http::uri::Uri;
 
 use crate::pyre_server::abc::{ProtocolBuffers, BaseTransport};
 use crate::pyre_server::switch::{Switchable, SwitchStatus};
@@ -197,16 +198,8 @@ impl H1Protocol {
             unreachable!()
         };
 
-        let (path, query) = {
-            let mut iter = path.splitn(1, "?");
-
-            let path = iter.next()
-                .expect("failed to extract base host path");
-
-            let query = iter.next().unwrap_or("");
-
-            (path, query)
-        };
+        let uri = path.parse::<Uri>()
+                .expect("failed to parse http url");
 
         let headers_new = Python::with_gil(|py| {
             let mut parsed_vec = Vec::with_capacity(request.headers.len());
@@ -237,8 +230,8 @@ impl H1Protocol {
             version,
             method,
             self.settings.schema.as_str(),
-            path,
-            query,
+            uri.path(),
+            uri.query().unwrap_or(""),
             asgi::TEMP_ROOT_PATH,
             headers_new,
             server,

@@ -6,6 +6,7 @@ use rustc_hash::FxHashMap;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 use std::time::Duration;
+use std::net::SocketAddr;
 
 use crate::pyre_server::client::Client;
 use crate::pyre_server::net::listener::{NoneBlockingListener, Status};
@@ -13,14 +14,13 @@ use crate::pyre_server::net::stream::TcpHandle;
 use crate::pyre_server::event_loop::{PreSetEventLoop, EventLoop};
 use crate::pyre_server::py_callback::CallbackHandler;
 use crate::pyre_server::settings::Settings;
-use std::net::SocketAddr;
 
 
 /// A handler the managers all clients of a given TcpListener, controlling
 /// the callbacks of file descriptor watchers, accepting the clients themselves
 /// from the listener and managing the event loop interactions.
-#[pyclass]
-pub struct _Server {
+#[pyclass(name="_Server")]
+pub struct Server {
     /// The max amount of time the listener should be accepted from in
     /// a single poll_accept() callback as to improve performance.
     backlog: usize,
@@ -52,22 +52,17 @@ pub struct _Server {
     settings: Settings,
 }
 
-impl _Server {
+impl Server {
     /// Create a new handler with a given backlog limit that wraps a given
     /// tcp listener and event loop helper.
     pub fn new(
+        settings: Settings,
         backlog: usize,
         listener: NoneBlockingListener,
         callback: CallbackHandler,
-
         keep_alive: Duration,
         idle_max: Duration,
-
-        socket_addr: SocketAddr,
     ) -> Self {
-
-        let settings = Settings::new(false, socket_addr);
-
         let client_counter: usize = 0;
         let clients = FxHashMap::default();
 
@@ -80,7 +75,7 @@ impl _Server {
             keep_alive,
             idle_max,
             callback,
-            settings
+            settings,
         }
     }
 
@@ -162,7 +157,7 @@ impl _Server {
 }
 
 #[pymethods]
-impl _Server {
+impl Server {
     /// Starts the server by adding a waiter for the listener's file descriptor
     /// for when the listener can accept a client(s).
     fn start(
