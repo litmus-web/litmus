@@ -6,8 +6,6 @@ use rustc_hash::FxHashMap;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 use std::time::Duration;
-use std::net::SocketAddr;
-
 use crate::pyre_server::client::Client;
 use crate::pyre_server::net::listener::{NoneBlockingListener, Status};
 use crate::pyre_server::net::stream::TcpHandle;

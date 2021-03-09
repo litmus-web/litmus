@@ -6,7 +6,6 @@ use crossbeam::channel::{Sender, Receiver, bounded, TryRecvError};
 use crate::pyre_server::responders::Payload;
 
 
-
 /// The callable class that handling communication back to the server protocol.
 #[pyclass]
 pub struct DataSender {

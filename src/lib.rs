@@ -24,8 +24,26 @@ use crate::pyre_server::settings::Settings;
 
 use pyo3::prelude::*;
 use pyo3::wrap_pyfunction;
+
 use std::time::Duration;
 use std::net::SocketAddr;
+
+use once_cell::sync::OnceCell;
+
+#[allow(unused)]
+pub const WAITER_FACTORY: OnceCell<PyObject> = OnceCell::new();
+
+
+/// Initialises the Pyre server runtime.
+///
+/// This function must be called before any servers can be created and should
+/// be done implicitly by the import rather than explicitly by the user.
+#[pyfunction]
+fn init(
+    waiter_factor: PyObject,
+) {
+    WAITER_FACTORY.get_or_init(|| waiter_factor);
+}
 
 
 /// Creates a client handler instance linked to a TcpListener and event loop.
@@ -78,6 +96,7 @@ fn create_server(
 ///
 #[pymodule]
 fn pyre(_py: Python, m: &PyModule) -> PyResult<()> {
+    m.add_function(wrap_pyfunction!(init, m)?)?;
     m.add_function(wrap_pyfunction!(create_server, m)?)?;
     m.add_class::<Server>()?;
     m.add_class::<DataSender>()?;
