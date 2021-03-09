@@ -12,7 +12,7 @@ __all__ = [
 ]
 
 
-_converter_re = re.compile(r"\{([^}]+):([^}]+)}", re.VERBOSE)
+_converter_re = re.compile(r"{([^}]+):([^}]+)}", re.VERBOSE)
 
 _standard_type_re_converter = {
     "alpha": r"[A-Za-z]+",
@@ -52,11 +52,11 @@ def parse_route(route_str: str) -> str:
     for split, converter in zip(split_route, converter_matches):
         if converter[1] == "":
             raise ValueError(
-                f"Parameter {converter[1]!r} converter type cannot be empty.")
+                f"parameter {converter[1]!r} converter type cannot be empty")
 
         if path_exists:
             raise ValueError(
-                "Url cannot have anything following after a 'path' converter.\n"
+                "url cannot have anything following after a 'path' converter.\n"
                 "If you are attempting to match anything other than '/' "
                 "use the 'string' converter"
             )

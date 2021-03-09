@@ -1,10 +1,10 @@
 import asyncio
-# import uvloop
+import uvloop
 from pyre.server import Server
 
-# uvloop.install()
-loop = asyncio.SelectorEventLoop()
-asyncio.set_event_loop(loop)
+uvloop.install()
+# loop = asyncio.SelectorEventLoop()
+# asyncio.set_event_loop(loop)
 
 
 async def suprise(scope, send, receive):
@@ -29,4 +29,4 @@ async def main():
         print("Shutting down server")
         server.shutdown()
 
-loop.run_until_complete(main())
+asyncio.get_event_loop().run_until_complete(main())
