@@ -1,15 +1,23 @@
 import asyncio
-import uvloop
+# import uvloop
 from pyre.server import Server
+from pprint import pprint
 
-uvloop.install()
-# loop = asyncio.SelectorEventLoop()
-# asyncio.set_event_loop(loop)
+# uvloop.install()
+loop = asyncio.SelectorEventLoop()
+asyncio.set_event_loop(loop)
 
 
-async def suprise(scope, send, receive):
+async def suprise(
+        scope,
+        send,
+        receive,
+):
+    pprint(scope)
     send(
+        # more body
         False,
+        # body
         b"HTTP/1.1 200 OK\r\n"
         b"Content-Length: 13\r\n"
         b"Server: Pyre\r\n"

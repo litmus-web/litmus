@@ -19,10 +19,10 @@ use crate::pyre_server::abc::{ProtocolBuffers, BaseTransport};
 use crate::pyre_server::switch::{Switchable, SwitchStatus};
 use crate::pyre_server::transport::Transport;
 use crate::pyre_server::py_callback::CallbackHandler;
-use crate::pyre_server::responders::sender::SenderHandler;
+use crate::pyre_server::responders::sender::SenderFactory;
 use crate::pyre_server::responders::receiver::ReceiverHandler;
 use crate::pyre_server::settings::Settings;
-use crate::pyre_server::asgi;
+use crate::pyre_server::psgi;
 
 
 /// The max headers allowed in a single request.
@@ -43,7 +43,7 @@ pub struct H1Protocol {
     callback: CallbackHandler,
 
     /// The sender half handler for ASGI callbacks.
-    sender: SenderHandler,
+    sender: SenderFactory,
 
     /// The receiver half handler for ASGI callbacks.
     receiver: ReceiverHandler,
@@ -59,7 +59,7 @@ pub struct H1Protocol {
 impl H1Protocol {
     /// Create a new H1Protocol instance.
     pub fn new(settings: Settings, callback: CallbackHandler) -> Self {
-        let sender = SenderHandler::new();
+        let sender = SenderFactory::new();
         let receiver = ReceiverHandler::new();
 
         Self {
@@ -191,9 +191,9 @@ impl H1Protocol {
             .expect("Version was None at complete parse");
 
         let version = if version == 0 {
-            asgi::HTTP_10
+            psgi::HTTP_10
         } else if version == 1 {
-            asgi::HTTP_11
+            psgi::HTTP_11
         } else {
             unreachable!()
         };
@@ -206,9 +206,11 @@ impl H1Protocol {
             for header in request.headers.iter() {
                 self.check_header(&header);
 
-                let converted1: Py<PyBytes> = Py::from(PyBytes::new(py, header.name.as_bytes()));
-                let converted2: Py<PyBytes> = Py::from(PyBytes::new(py, header.value));
-                parsed_vec.push((converted1, converted2))
+                let converted2: Py<PyBytes> = Py::from(PyBytes::new(
+                    py,
+                    header.value
+                ));
+                parsed_vec.push(( header.name, converted2))
             }
 
             parsed_vec
@@ -224,15 +226,14 @@ impl H1Protocol {
             self.transport()?.client.port(),
         );
 
-        let scope: asgi::AsgiScopeArgs = (
-            asgi::SCOPE_TYPE,
-            asgi::SCOPE_SPEC,
+        let scope: psgi::PSGIScope = (
+            psgi::SCOPE_TYPE,
             version,
             method,
             self.settings.schema.as_str(),
             uri.path(),
             uri.query().unwrap_or(""),
-            asgi::TEMP_ROOT_PATH,
+            psgi::TEMP_ROOT_PATH,
             headers_new,
             server,
             client,

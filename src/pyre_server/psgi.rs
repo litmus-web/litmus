@@ -4,7 +4,7 @@ use pyo3::types::PyBytes;
 /// A set of headers.
 ///
 /// Each header is a (name, value) pair.
-type Headers = Vec<(Py<PyBytes>, Py<PyBytes>)>;
+type Headers<'a> = Vec<(&'a str, Py<PyBytes>)>;
 
 /// A simple tuple containing the ip string and port
 type SocketDetails = (String, u16);
@@ -14,15 +14,6 @@ pub const SCOPE_TYPE: &str = "http";
 
 /// A temporary root path constant todo: allow this to be set
 pub const TEMP_ROOT_PATH: &str = "";
-
-/// A tuple containing details of the ASGI specification.
-pub type ASGISpec = (&'static str, &'static str);
-
-/// Version of the ASGI spec
-const SCOPE_VERSION: &str = "3.0";
-
-/// Version of the ASGI HTTP spec this server understands
-const SCOPE_SPEC_VERSION: &str = "2.0";
 
 /// The HTTP/1.0 specification
 pub const HTTP_10: &str = "1.0";
@@ -34,29 +25,13 @@ pub const HTTP_11: &str = "1.1";
 pub const _HTTP_2: &str = "2";
 
 
-/// The ASGI specification.
-#[allow(unused)]
-pub const SCOPE_SPEC: ASGISpec = (
-    // Version of the ASGI spec
-    SCOPE_VERSION,
-
-    // Version of the ASGI HTTP spec this server understands
-    SCOPE_SPEC_VERSION,
-);
-
-
-/// The asgi scope that contains all state of the server and
+/// The PSGI scope that contains all state of the server and
 /// request.
-pub type AsgiScopeArgs<'a> = (
+pub type PSGIScope<'a> = (
     // type
     //
     // The type of scope, for a request this is "http"
     &'static str,
-
-    // spec
-    //
-    // The ASGI specification
-    ASGISpec,
 
     // http_version
     //
@@ -96,7 +71,7 @@ pub type AsgiScopeArgs<'a> = (
     // is the header name, and value is the header value.
     // Order of header values must be preserved from the original
     // HTTP request.
-    Headers,
+    Headers<'a>,
 
     // client
     //

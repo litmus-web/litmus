@@ -1,2 +1,2 @@
-from .shared import PartialTask, FileDescriptorPartial, Server
+from .shared import FileDescriptorPartial, Server
 

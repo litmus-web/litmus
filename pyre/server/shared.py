@@ -34,20 +34,6 @@ class FileDescriptorPartial:
         self._caller(fd, self._callback, index)
 
 
-class PartialTask:
-    """
-    A partial task factory, when called it produces a task of the
-    callback with the give args and kwargs.
-    """
-
-    def __init__(self, executor: asyncio.AbstractEventLoop, cb):
-        self.executor = executor
-        self.cb = cb
-
-    def __call__(self, *args, **kwargs):
-        self.executor.create_task(self.cb(*args))
-
-
 def _waiter_factory() -> asyncio.Event:
     return asyncio.Event()
 
@@ -75,12 +61,11 @@ class Server:
         self.loop = loop or asyncio.get_event_loop()
 
         self._waiter = self.loop.create_future()
-        self._factory = PartialTask(self.loop, self.__app)
 
         self._server: _Server = create_server(
             self.host,
             self.port,
-            self._factory,
+            self.__app,
             self.backlog,
             self.keep_alive,
             self.idle_max if idle_max > 0 else 0,
@@ -105,25 +90,21 @@ class Server:
             self.loop.create_task(self.idle_max_ticker())
         self._server.poll_accept()
 
-    async def __app(self, scope, send, receive):
+    def __app(self, scope, send, receive):
         scope = {
             "type": scope[0],
-            "asgi": {
-                "version": scope[1][0],
-                "spec_version": scope[1][1],
-            },
-            "http_version": scope[2],
-            "method": scope[3],
-            "scheme": scope[4],
-            "path": scope[5],
-            "query": scope[6],
-            "root_path": scope[7],
-            "headers": scope[8],
-            "client": scope[9],
-            "server": scope[10],
+            "http_version": scope[1],
+            "method": scope[2],
+            "scheme": scope[3],
+            "path": scope[4],
+            "query": scope[5],
+            "root_path": scope[6],
+            "headers": scope[7],
+            "client": scope[8],
+            "server": scope[9],
         }
 
-        await self.app(scope, send, receive)
+        self.loop.create_task(self.app(scope, send, receive))
 
     async def run_forever(self):
         await self._waiter
