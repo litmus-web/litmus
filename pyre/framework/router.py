@@ -143,6 +143,10 @@ def _compile_converter(
     return converters_reversed[::-1]
 
 
+def _convert(parts):
+    return parts[1](parts[0])
+
+
 class BaseEndpoint:
     """
     The BaseEndpoint class is responsible for basic handling of a Blueprint
@@ -182,17 +186,13 @@ class BaseEndpoint:
         try:
             if self.before_invoke is not None:
                 request = await self.before_invoke(request) or request
-            new_args = map(self._convert, zip(request.args, self._converters))
+            new_args = map(_convert, zip(request.args, self._converters))
             return await self.callback(request, *new_args)
         except Exception as e:
             if self.on_error is not None:
                 await self.on_error(request, e)
                 return e
             raise e
-
-    @staticmethod
-    def _convert(parts):
-        return parts[1](parts[0])
 
     @property
     def route(self):
@@ -314,14 +314,16 @@ class Blueprint:
         By default this re-raises the exception however this can be
         overwritten in order to create group error handlers.
 
-        If this handler is overwritten
+        If this handler is overwritten it is important to re-raise
+        any unhandled exception otherwise it will implicitly silence
+        the error.
 
         Args:
             request:
+                A given request instance containing any relevant context.
+
             exception:
-
-        Returns:
-
+                The exception instance that's been raised by the endpoint.
         """
         raise exception
 
