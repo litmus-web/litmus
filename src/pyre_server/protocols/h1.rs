@@ -204,11 +204,11 @@ impl H1Protocol {
     }
 
     fn parse_chunked_body(&mut self, buffer: &mut BytesMut) -> PyResult<()> {
-
+        Ok(())
     }
 
     fn parser_body(&mut self, buffer: &mut BytesMut) -> PyResult<()> {
-
+        Ok(())
     }
 
     /// Turns all the headers into Python type objects and invokes the
