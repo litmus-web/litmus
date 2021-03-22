@@ -112,7 +112,6 @@ impl H1Protocol {
     /// Resets the internal state of the protocol for handling a new
     /// connection.
     fn reset_state(&mut self) {
-        self.expect_body = false;
         self.expected_content_length = 0;
         self.chunked_encoding = false;
 
