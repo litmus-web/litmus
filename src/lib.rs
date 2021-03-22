@@ -20,8 +20,6 @@ use pyo3::wrap_pyfunction;
 use std::time::Duration;
 use std::net::SocketAddr;
 
-use once_cell::sync::OnceCell;
-
 
 /// Creates a client handler instance linked to a TcpListener and event loop.
 ///
