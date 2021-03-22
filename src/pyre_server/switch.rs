@@ -5,6 +5,7 @@ use crate::pyre_server::protocol_manager::SelectedProtocol;
 
 /// Defines the two states a protocol's switch status can be either SwitchTo
 /// type T, or dont switch at all.
+#[allow(unused)]
 pub enum SwitchStatus {
     SwitchTo(SelectedProtocol),
     NoSwitch,

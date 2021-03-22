@@ -11,7 +11,7 @@ use std::str;
 
 use bytes::BytesMut;
 
-use httparse::{Header, Request};
+use httparse::{Header, Request, parse_chunk_size};
 use http::header::{CONTENT_LENGTH, TRANSFER_ENCODING};
 use http::uri::Uri;
 
@@ -20,7 +20,7 @@ use crate::pyre_server::switch::{Switchable, SwitchStatus};
 use crate::pyre_server::transport::Transport;
 use crate::pyre_server::py_callback::CallbackHandler;
 use crate::pyre_server::responders::sender::SenderFactory;
-use crate::pyre_server::responders::receiver::ReceiverHandler;
+use crate::pyre_server::responders::receiver::ReceiverFactory;
 use crate::pyre_server::settings::Settings;
 use crate::pyre_server::psgi;
 
@@ -46,7 +46,7 @@ pub struct H1Protocol {
     sender: SenderFactory,
 
     /// The receiver half handler for ASGI callbacks.
-    receiver: ReceiverHandler,
+    receiver: ReceiverFactory,
 
     /// The length of the body either as a chunk or the whole
     /// length depending on if the request uses chunked encoding or not.
@@ -60,7 +60,7 @@ impl H1Protocol {
     /// Create a new H1Protocol instance.
     pub fn new(settings: Settings, callback: CallbackHandler) -> Self {
         let sender = SenderFactory::new();
-        let receiver = ReceiverHandler::new();
+        let receiver = ReceiverFactory::new();
 
         Self {
             maybe_transport: None,
@@ -98,6 +98,7 @@ impl H1Protocol {
     /// the `Transport` can be used to pause and resume reading from this
     /// socket.
     pub fn new_connection(&mut self, transport: Transport) -> PyResult<()> {
+        self.reset_state();
         self.maybe_transport = Some(transport);
         Ok(())
     }
@@ -106,6 +107,17 @@ impl H1Protocol {
     /// properly reset state.
     pub fn lost_connection(&mut self) -> PyResult<()> {
         Ok(())
+    }
+
+    /// Resets the internal state of the protocol for handling a new
+    /// connection.
+    fn reset_state(&mut self) {
+        self.expect_body = false;
+        self.expected_content_length = 0;
+        self.chunked_encoding = false;
+
+        self.sender = SenderFactory::new();
+        self.receiver = ReceiverFactory::new();
     }
 }
 
@@ -121,6 +133,47 @@ impl ProtocolBuffers for H1Protocol {
     /// Upon no data being read signalling a EOF the eof_received callback is
     /// invoked and handled instead.
     fn data_received(&mut self, buffer: &mut BytesMut) -> PyResult<()> {
+        if self.expected_content_length == 0 {
+            self.parser_request(buffer)?;
+        }
+
+        if self.chunked_encoding {
+            self.parse_chunked_body(buffer)?;
+        } else if self.expected_content_length > 0 {
+            self.parser_body(buffer)?;
+        }
+
+        self.transport()?.resume_writing()?;
+        Ok(())
+    }
+
+    /// Fills the passed buffer with any messages enqueued to be sent.
+    fn fill_write_buffer(&mut self, buffer: &mut BytesMut) -> PyResult<()> {
+        while let Ok((_more_body, buff)) = self.sender.recv() {
+            buffer.extend(buff);
+        }
+
+        Ok(())
+    }
+
+    /// Pauses writing removing the event listeners to close the socket.
+    fn eof_received(&mut self) -> PyResult<()> {
+        self.transport()?.pause_reading()
+    }
+}
+
+impl Switchable for H1Protocol {
+    /// Determines what the protocol should be switched to if it is
+    /// necessary called just after reading has completed to allow
+    /// for upgrading.
+    fn switch_protocol(&mut self) -> PyResult<SwitchStatus> {
+        // ignore for now
+        Ok(SwitchStatus::NoSwitch)
+    }
+}
+
+impl H1Protocol {
+    fn parser_request(&mut self, buffer: &mut BytesMut) -> PyResult<()> {
         // This should be fine as it is guaranteed to be initialised
         // before we use it, just waiting for the ability to use
         // MaybeUninit, till then here we are.
@@ -148,38 +201,17 @@ impl ProtocolBuffers for H1Protocol {
 
         self.on_request_parse(&mut request)?;
 
-        self.transport()?.resume_writing()?;
         Ok(())
     }
 
-    /// Fills the passed buffer with any messages enqueued to be sent.
-    ///
-    /// Todo: This needs to have some flot control added.
-    fn fill_write_buffer(&mut self, buffer: &mut BytesMut) -> PyResult<()> {
-        while let Ok((_more_body, buff)) = self.sender.recv() {
-            buffer.extend(buff);
-        }
+    fn parse_chunked_body(&mut self, buffer: &mut BytesMut) -> PyResult<()> {
 
-        Ok(())
     }
 
-    /// Pauses writing removing the event listeners to close the socket.
-    fn eof_received(&mut self) -> PyResult<()> {
-        self.transport()?.pause_reading()
-    }
-}
+    fn parser_body(&mut self, buffer: &mut BytesMut) -> PyResult<()> {
 
-impl Switchable for H1Protocol {
-    /// Determines what the protocol should be switched to if it is
-    /// necessary called just after reading has completed to allow
-    /// for upgrading.
-    fn switch_protocol(&mut self) -> PyResult<SwitchStatus> {
-        // ignore for now
-        Ok(SwitchStatus::NoSwitch)
     }
-}
 
-impl H1Protocol {
     /// Turns all the headers into Python type objects and invokes the
     /// python callback.
     fn on_request_parse(&mut self, request: &mut Request) -> PyResult<()> {
