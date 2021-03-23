@@ -19,48 +19,6 @@ use crate::pyre_server::settings::Settings;
 const QUEUE_SIZE: usize = 512;
 
 
-struct ClientManager {
-    clients: Slab<Client>,
-    free_clients: ArrayQueue<usize>,
-}
-
-impl ClientManager {
-    fn new() -> Self {
-        let clients = Slab::with_capacity(QUEUE_SIZE);
-        let free_clients = ArrayQueue::new(QUEUE_SIZE);
-        Self {
-            clients,
-            free_clients,
-        }
-    }
-
-    fn get_free_client(&mut self) -> Option<&mut Client> {
-        let id = self.free_clients.pop()?;
-        self.clients.get_mut(id)
-    }
-
-    fn submit_client(&mut self, client: Client) {
-        self.clients.insert(client);
-    }
-
-    fn check_clients(&mut self) {
-        for (id, client) in self.clients.iter() {
-            if client.idle() {
-                self.free_clients.push(id);
-            }
-        }
-    }
-
-    fn clean_clients(&mut self, max_time: Duration) {
-        for (id, client) in self.clients.iter() {
-            if client.idle_duration() > max_time {
-                self.clients.remove(id);
-            }
-        }
-    }
-}
-
-
 /// A handler the managers all clients of a given TcpListener, controlling
 /// the callbacks of file descriptor watchers, accepting the clients themselves
 /// from the listener and managing the event loop interactions.
@@ -76,11 +34,11 @@ pub struct Server {
     /// The key Python event loop callbacks and interactions helper.
     event_loop_: Option<EventLoop>,
 
-    /// A internal counter for assigning new client indexes
-    client_counter: usize,
-
     /// A pool of clients that are being managed and interacted with.
-    clients: ClientManager,
+    clients: Slab<Client>,
+
+    /// A queue of clients which are freely available.
+    free_clients: ArrayQueue<usize>,
 
     /// The keep alive timeout duration.
     keep_alive: Duration,
@@ -108,15 +66,15 @@ impl Server {
         keep_alive: Duration,
         idle_max: Duration,
     ) -> Self {
-        let client_counter: usize = 0;
-        let clients = ClientManager::new();
+        let clients = Slab::with_capacity(QUEUE_SIZE);
+        let free_clients = ArrayQueue::new(QUEUE_SIZE);
 
         Self {
             backlog,
             listener,
             event_loop_: None,
-            client_counter,
             clients,
+            free_clients,
             keep_alive,
             idle_max,
             callback,
@@ -142,30 +100,6 @@ impl Server {
     /// and its handle has been wrapped in a `client::Client` struct.
     fn handle_client(&mut self, handle: TcpHandle) -> PyResult<()> {
         let fd = handle.fd();
-
-        let loop_ = PreSetEventLoop {
-            event_loop: self.event_loop()?.clone(),
-            fd,
-            index,
-            is_reading_: Arc::new(AtomicBool::new(false)),
-            is_writing_: Arc::new(AtomicBool::new(false)),
-        };
-
-        loop_.resume_reading()?;
-
-        if let Some(client) = self.clients.get_free_client() {
-            client.bind_handle(handle)?;
-        } else {
-            let cli = Client::from_handle(
-                handle,
-                loop_,
-                self.callback.clone(),
-                self.settings,
-            )?;
-
-            self.clients.submit_client(cli);
-        }
-
         Ok(())
     }
 }
@@ -227,12 +161,7 @@ impl Server {
     /// what determines which stream is actually ready and which handler
     /// should be called as this is a global handler callback.
     fn poll_read(&mut self, index: usize) -> PyResult<()> {
-        let client = self.clients
-            .get_mut(&index)
-            .expect(&format!("Expected valid client at index: {}", index));
-
-        client.poll_read()?;
-
+        self.clients[index].poll_read()?;
         Ok(())
     }
 
@@ -241,12 +170,7 @@ impl Server {
     /// what determines which stream is actually ready and which handler
     /// should be called as this is a global handler callback.
     fn poll_write(&mut self, index: usize) -> PyResult<()> {
-        let client = self.clients
-            .get_mut(&index)
-            .expect(&format!("Expected valid client at index: {}", index));
-
-        client.poll_write()?;
-
+        self.clients[index].poll_write()?;
         Ok(())
     }
 
@@ -264,14 +188,9 @@ impl Server {
     /// Polled every x seconds where the time is equivalent to the
     /// `Server.idle_max` duration.
     fn poll_idle(&mut self) {
-        let keys: Vec<usize> = self.clients.keys().copied().collect();
-        for key in keys {
-            let maybe_client = self.clients.get(&key);
-            if maybe_client.is_none() { continue };
-
-            let client = maybe_client.unwrap();
-            if client.idle_duration() > self.idle_max {
-                self.clients.remove(&key);
+        for (id, client) in self.clients.iter() {
+            if client.idle() {
+                self.free_clients.push(id);
             }
         }
     }
