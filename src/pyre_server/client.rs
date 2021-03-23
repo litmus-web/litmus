@@ -24,6 +24,10 @@ pub struct Client {
     /// multiple protocols.
     protocol: AutoProtocol,
 
+    /// A boolean value that tells the server if the client has already been
+    /// marked as free and is in the pool or if it has yet to be checked.
+    is_free: bool,
+
     /// Represents if the client is idle because the client has closed
     /// the connection or the protocol has closed the connection.
     is_idle: bool,
@@ -62,6 +66,7 @@ impl Client {
             handle,
             protocol,
 
+            is_free: true,
             is_idle: false,
             last_time: Instant::now(),
             idle_for: Instant::now(),
@@ -73,12 +78,12 @@ impl Client {
     pub fn bind_handle(
         &mut self,
         handle: TcpHandle,
-        new_loop: PreSetEventLoop,
     ) -> PyResult<()> {
         self.handle = handle;
-        self.event_loop = new_loop;
+        self.event_loop.bind_new_fd(self.handle.fd());
 
         self.is_idle = false;
+        self.is_free = false;
 
         let transport = Transport::new(
             self.handle.addr,
@@ -86,7 +91,16 @@ impl Client {
         );
         self.protocol.new_connection(transport)?;
 
+        self.event_loop.resume_reading()?;
+
         Ok(())
+    }
+
+    /// Represents if the client is free and marked by the server as being
+    /// available to new clients.
+    #[inline]
+    pub fn free(&self) -> bool {
+        self.is_free
     }
 
     /// Represents if the client is idle because the client has closed
@@ -98,7 +112,8 @@ impl Client {
 
     /// Measures how long the client has been inactive for.
     #[inline]
-    pub fn idle_duration(&self) -> Duration {
+    pub fn idle_duration(&self) -> Duration
+    {
         self.idle_for.elapsed()
     }
 

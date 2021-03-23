@@ -4,6 +4,7 @@ use pyo3::exceptions::PyRuntimeError;
 use crossbeam::queue::ArrayQueue;
 use slab::Slab;
 
+use std::mem::MaybeUninit;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 use std::time::Duration;
@@ -35,7 +36,7 @@ pub struct Server {
     event_loop_: Option<EventLoop>,
 
     /// A pool of clients that are being managed and interacted with.
-    clients: Slab<Client>,
+    clients: Slab<Option<Client>>,
 
     /// A queue of clients which are freely available.
     free_clients: ArrayQueue<usize>,
@@ -100,6 +101,44 @@ impl Server {
     /// and its handle has been wrapped in a `client::Client` struct.
     fn handle_client(&mut self, handle: TcpHandle) -> PyResult<()> {
         let fd = handle.fd();
+
+        if let Some(id) = self.free_clients.pop() {
+            let cli = self.clients.get_mut(id)
+                .expect("client did not exist at position given by queue");
+
+            if let Some(cli) = cli {
+                cli.bind_handle(
+                    handle
+                )?;
+            } else {
+                panic!("unknown memory behaviour occurring")
+            };
+
+
+            return Ok(())
+        }
+
+        let id = self.clients.insert(None);
+
+        let loop_ = PreSetEventLoop {
+            event_loop: self.event_loop()?.clone(),
+            fd,
+            index: id,
+            is_reading_: Arc::new(AtomicBool::new(false)),
+            is_writing_: Arc::new(AtomicBool::new(false)),
+        };
+
+        loop_.resume_reading()?;
+
+        let cli = Client::from_handle(
+            handle,
+            loop_,
+            self.callback.clone(),
+            self.settings,
+        )?;
+
+        self.clients[id] = Some(cli);
+
         Ok(())
     }
 }
@@ -125,7 +164,9 @@ impl Server {
     /// being handled, this also removed the file descriptor waiters.
     fn shutdown(&mut self) -> PyResult<()> {
         for (_, v) in self.clients.iter_mut() {
-            v.shutdown()?;
+            if let Some(cli) = v {
+                cli.shutdown()?;
+            };
         }
 
         self.event_loop()?.remove_reader(self.listener.fd())?;
@@ -161,7 +202,9 @@ impl Server {
     /// what determines which stream is actually ready and which handler
     /// should be called as this is a global handler callback.
     fn poll_read(&mut self, index: usize) -> PyResult<()> {
-        self.clients[index].poll_read()?;
+        if let Some(cli) = self.clients[index].as_mut() {
+            cli.poll_read()?;
+        }
         Ok(())
     }
 
@@ -170,16 +213,22 @@ impl Server {
     /// what determines which stream is actually ready and which handler
     /// should be called as this is a global handler callback.
     fn poll_write(&mut self, index: usize) -> PyResult<()> {
-        self.clients[index].poll_write()?;
+        if let Some(cli) = self.clients[index].as_mut() {
+            cli.poll_write()?;
+        }
         Ok(())
     }
 
     /// Polled every x seconds where the time is equivalent to the
     /// `Server.keep_alive` duration.
     fn poll_keep_alive(&mut self)-> PyResult<()> {
-        for (_, client) in self.clients.iter_mut() {
-            if !client.idle() {
-                client.poll_keep_alive(self.keep_alive)?;
+        for (id, client) in self.clients.iter_mut() {
+            if let Some(cli) = client {
+                if !cli.idle() {
+                    cli.poll_keep_alive(self.keep_alive)?;
+                } else if !cli.free() {
+                    let _ = self.free_clients.push(id);
+                }
             }
         }
         Ok(())
@@ -188,10 +237,22 @@ impl Server {
     /// Polled every x seconds where the time is equivalent to the
     /// `Server.idle_max` duration.
     fn poll_idle(&mut self) {
+        let mut remove = Vec::new();
         for (id, client) in self.clients.iter() {
-            if client.idle() {
-                self.free_clients.push(id);
+            if let Some(cli) = client {
+                if !cli.idle() | !cli.free() {
+                    continue
+                }
+
+                // We have enough free clients
+                if let Err(_) = self.free_clients.push(id) {
+                    remove.push(id);
+                };
             }
+        }
+
+        for id in remove {
+            self.clients.remove(id);
         }
     }
 

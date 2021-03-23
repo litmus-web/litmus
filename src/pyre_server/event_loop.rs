@@ -131,6 +131,7 @@ impl EventLoop {
 #[derive(Clone)]
 pub struct PreSetEventLoop {
     pub event_loop: EventLoop,
+
     #[cfg(unix)]
     pub fd: i32,
 
@@ -145,6 +146,20 @@ pub struct PreSetEventLoop {
 
 
 impl PreSetEventLoop {
+    #[cfg(unix)]
+    pub fn bind_new_fd(&mut self, fd: i32) {
+        self.is_reading_.store(false, Relaxed);
+        self.is_writing_.store(false, Relaxed);
+        self.fd = fd;
+    }
+
+    #[cfg(windows)]
+    pub fn bind_new_fd(&mut self, fd: u64) {
+        self.is_reading_.store(false, Relaxed);
+        self.is_writing_.store(false, Relaxed);
+        self.fd = fd;
+    }
+
     /// Resumes the file descriptor listener waiting for when the fd can be
     /// read from.
     pub fn resume_reading(&self) -> PyResult<()> {

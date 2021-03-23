@@ -1,7 +1,7 @@
 import asyncio
 from typing import Callable
 
-from .. import _Server, create_server, init as _init
+from .. import _Server, create_server
 
 
 class FileDescriptorPartial:
@@ -32,10 +32,6 @@ class FileDescriptorPartial:
 
     def __call__(self, fd: int, index: int, *args):
         self._caller(fd, self._callback, index)
-
-
-def _waiter_factory() -> asyncio.Event:
-    return asyncio.Event()
 
 
 class Server:
@@ -148,8 +144,3 @@ class Server:
     @property
     def _remove_writer(self):
         return self.loop.remove_writer
-
-
-_init(
-    _waiter_factory
-)

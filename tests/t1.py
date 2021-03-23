@@ -13,7 +13,6 @@ async def suprise(
         send,
         receive,
 ):
-    pprint(scope)
     send(
         # more body
         False,
