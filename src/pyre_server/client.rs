@@ -73,10 +73,8 @@ impl Client {
     pub fn bind_handle(
         &mut self,
         handle: TcpHandle,
-        event_loop: PreSetEventLoop,
     ) -> PyResult<()> {
         self.handle = handle;
-        self.event_loop = event_loop;
 
         self.is_idle = false;
 

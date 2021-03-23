@@ -53,7 +53,6 @@ pub trait BaseTransport {
 
     /// Resumes writing of the set connection.
     fn resume_writing(&self) -> PyResult<()>;
-
 }
 
 

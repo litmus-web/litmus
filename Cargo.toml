@@ -20,6 +20,7 @@ httpdate = "0.3"
 bytes = "1.0.1"
 rustc-hash = "1.1.0"
 crossbeam = "0.8.0"
+slab = "0.4"
 
 [target.'cfg(not(target_env = "msvc"))'.dependencies]
 jemallocator = { version="^0.3.2", features = ["disable_initial_exec_tls", "background_threads"] }

@@ -1,17 +1,64 @@
 use pyo3::prelude::*;
 use pyo3::exceptions::PyRuntimeError;
 
-use rustc_hash::FxHashMap;
+use crossbeam::queue::ArrayQueue;
+use slab::Slab;
 
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 use std::time::Duration;
+
 use crate::pyre_server::client::Client;
 use crate::pyre_server::net::listener::{NoneBlockingListener, Status};
 use crate::pyre_server::net::stream::TcpHandle;
 use crate::pyre_server::event_loop::{PreSetEventLoop, EventLoop};
 use crate::pyre_server::py_callback::CallbackHandler;
 use crate::pyre_server::settings::Settings;
+
+
+const QUEUE_SIZE: usize = 512;
+
+
+struct ClientManager {
+    clients: Slab<Client>,
+    free_clients: ArrayQueue<usize>,
+}
+
+impl ClientManager {
+    fn new() -> Self {
+        let clients = Slab::with_capacity(QUEUE_SIZE);
+        let free_clients = ArrayQueue::new(QUEUE_SIZE);
+        Self {
+            clients,
+            free_clients,
+        }
+    }
+
+    fn get_free_client(&mut self) -> Option<&mut Client> {
+        let id = self.free_clients.pop()?;
+        self.clients.get_mut(id)
+    }
+
+    fn submit_client(&mut self, client: Client) {
+        self.clients.insert(client);
+    }
+
+    fn check_clients(&mut self) {
+        for (id, client) in self.clients.iter() {
+            if client.idle() {
+                self.free_clients.push(id);
+            }
+        }
+    }
+
+    fn clean_clients(&mut self, max_time: Duration) {
+        for (id, client) in self.clients.iter() {
+            if client.idle_duration() > max_time {
+                self.clients.remove(id);
+            }
+        }
+    }
+}
 
 
 /// A handler the managers all clients of a given TcpListener, controlling
@@ -33,7 +80,7 @@ pub struct Server {
     client_counter: usize,
 
     /// A pool of clients that are being managed and interacted with.
-    clients: FxHashMap<usize, Client>,
+    clients: ClientManager,
 
     /// The keep alive timeout duration.
     keep_alive: Duration,
@@ -62,7 +109,7 @@ impl Server {
         idle_max: Duration,
     ) -> Self {
         let client_counter: usize = 0;
-        let clients = FxHashMap::default();
+        let clients = ClientManager::new();
 
         Self {
             backlog,
@@ -91,41 +138,10 @@ impl Server {
         }
     }
 
-    /// Finds the first client that is classed as 'idle' which is
-    /// then selected to be used as the handler of the new connection.
-    fn get_idle_client(&self) -> Option<usize> {
-        for (key, client) in self.clients.iter() {
-            if client.idle() {
-                return Some(*key)
-            }
-        }
-
-        None
-    }
-
-    /// Selects a index using either an existing idle protocol instance
-    /// or making a new protocol by returning a index that does not exist in
-    /// the clients hashmap.
-    fn select_index(&mut self) -> usize {
-        match self.get_idle_client() {
-            Some(index) => index,
-            None => {
-                let index = self.client_counter;
-
-                // Better increase it now
-                self.client_counter += 1;
-
-                index
-            }
-        }
-    }
-
     /// An internal function that is invoked when a client has been accepted
     /// and its handle has been wrapped in a `client::Client` struct.
     fn handle_client(&mut self, handle: TcpHandle) -> PyResult<()> {
         let fd = handle.fd();
-
-        let index = self.select_index();
 
         let loop_ = PreSetEventLoop {
             event_loop: self.event_loop()?.clone(),
@@ -137,8 +153,8 @@ impl Server {
 
         loop_.resume_reading()?;
 
-        if let Some(client) = self.clients.get_mut(&index) {
-            client.bind_handle(handle, loop_)?;
+        if let Some(client) = self.clients.get_free_client() {
+            client.bind_handle(handle)?;
         } else {
             let cli = Client::from_handle(
                 handle,
@@ -147,7 +163,7 @@ impl Server {
                 self.settings,
             )?;
 
-            self.clients.insert(index, cli);
+            self.clients.submit_client(cli);
         }
 
         Ok(())
