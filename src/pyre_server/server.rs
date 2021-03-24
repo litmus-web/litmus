@@ -4,7 +4,6 @@ use pyo3::exceptions::PyRuntimeError;
 use crossbeam::queue::ArrayQueue;
 use slab::Slab;
 
-use std::mem::MaybeUninit;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 use std::time::Duration;
@@ -44,10 +43,6 @@ pub struct Server {
     /// The keep alive timeout duration.
     keep_alive: Duration,
 
-    /// The timeout duration for idling clients, if a client has been
-    /// inactive above this duration the client is dropped from memory.
-    idle_max: Duration,
-
     /// The python task callback, this creates a callback task to
     /// Python when the server is ready to call it.
     callback: CallbackHandler,
@@ -65,7 +60,6 @@ impl Server {
         listener: NoneBlockingListener,
         callback: CallbackHandler,
         keep_alive: Duration,
-        idle_max: Duration,
     ) -> Self {
         let clients = Slab::with_capacity(QUEUE_SIZE);
         let free_clients = ArrayQueue::new(QUEUE_SIZE);
@@ -77,7 +71,6 @@ impl Server {
             clients,
             free_clients,
             keep_alive,
-            idle_max,
             callback,
             settings,
         }

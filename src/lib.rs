@@ -1,25 +1,23 @@
+use std::net::SocketAddr;
+use std::time::Duration;
+
 #[cfg(not(target_env = "msvc"))]
 use jemallocator::Jemalloc;
+use pyo3::prelude::*;
+use pyo3::wrap_pyfunction;
+
+use crate::pyre_server::net::listener::NoneBlockingListener;
+use crate::pyre_server::py_callback::CallbackHandler;
+use crate::pyre_server::responders::receiver::DataReceiver;
+use crate::pyre_server::responders::sender::DataSender;
+use crate::pyre_server::server::Server;
+use crate::pyre_server::settings::Settings;
 
 #[cfg(not(target_env = "msvc"))]
 #[global_allocator]
 static GLOBAL: Jemalloc = Jemalloc;
 
 mod pyre_server;
-
-use crate::pyre_server::server::Server;
-use crate::pyre_server::net::listener::NoneBlockingListener;
-use crate::pyre_server::py_callback::CallbackHandler;
-use crate::pyre_server::responders::sender::DataSender;
-use crate::pyre_server::responders::receiver::DataReceiver;
-use crate::pyre_server::settings::Settings;
-
-use pyo3::prelude::*;
-use pyo3::wrap_pyfunction;
-
-use std::time::Duration;
-use std::net::SocketAddr;
-
 
 /// Creates a client handler instance linked to a TcpListener and event loop.
 ///
@@ -41,7 +39,6 @@ fn create_server(
     callback: PyObject,
     backlog: usize,
     keep_alive: u64,
-    idle_max: u64,
 ) -> PyResult<Server> {
     let binder = format!("{}:{}", host, port);
 
@@ -51,7 +48,6 @@ fn create_server(
     let callback = CallbackHandler::new(callback);
 
     let keep_alive = Duration::from_secs(keep_alive);
-    let idle_max = Duration::from_secs(idle_max);
 
     let new_handler = Server::new(
         settings,
@@ -59,7 +55,6 @@ fn create_server(
         listener,
         callback,
         keep_alive,
-        idle_max,
     );
 
     Ok(new_handler)

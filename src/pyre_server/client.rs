@@ -110,13 +110,6 @@ impl Client {
         self.is_idle
     }
 
-    /// Measures how long the client has been inactive for.
-    #[inline]
-    pub fn idle_duration(&self) -> Duration
-    {
-        self.idle_for.elapsed()
-    }
-
     /// Shuts down the client.
     ///
     /// Invoked when the whole server is
