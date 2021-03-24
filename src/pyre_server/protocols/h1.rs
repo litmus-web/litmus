@@ -94,7 +94,7 @@ impl H1Protocol {
             Ok(t)
         } else {
             Err(PyRuntimeError::new_err(
-                "Transport was None upon being called."
+                "transport was None upon being called"
             ))
         }
     }
@@ -147,6 +147,8 @@ impl ProtocolBuffers for H1Protocol {
             self.parse_chunked_body(buffer)?;
         } else if self.expected_content_length > 0 {
             self.parse_body(buffer)?;
+        } else {
+            let _ = self.receiver.send((false, Vec::new()));
         }
 
         self.transport()?.resume_writing()?;
