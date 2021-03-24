@@ -11,7 +11,7 @@ use std::str;
 
 use bytes::BytesMut;
 
-use httparse::{Header, Request, parse_chunk_size};
+use httparse::{Header, Request, Status, parse_chunk_size};
 use http::header::{CONTENT_LENGTH, TRANSFER_ENCODING};
 use http::uri::Uri;
 
@@ -24,10 +24,17 @@ use crate::pyre_server::responders::receiver::ReceiverFactory;
 use crate::pyre_server::settings::Settings;
 use crate::pyre_server::psgi;
 
+macro_rules! conv_err {
+    ( $e:expr ) => ( $e.map_err(|e| PyRuntimeError::new_err(format!("{}", e))) )
+}
 
 /// The max headers allowed in a single request.
 const MAX_HEADERS: usize = 100;
 
+/// The minimum amount the buffer needs to be filled by before a body is sent.
+const MIN_BUFF_SIZE: usize = 64 * 1024;
+
+const FORGIVING_BUFFER_SIZE: usize = 128 * 1024;
 
 /// The protocol to add handling for the HTTP/1.x protocol.
 pub struct H1Protocol {
@@ -139,7 +146,7 @@ impl ProtocolBuffers for H1Protocol {
         if self.chunked_encoding {
             self.parse_chunked_body(buffer)?;
         } else if self.expected_content_length > 0 {
-            self.parser_body(buffer)?;
+            self.parse_body(buffer)?;
         }
 
         self.transport()?.resume_writing()?;
@@ -183,12 +190,7 @@ impl H1Protocol {
         let body = buffer.clone();
 
         let mut request = Request::new(&mut headers);
-        let status = match request.parse(&body) {
-            Ok(status) => status,
-            Err(e) => return Err(PyRuntimeError::new_err(format!(
-                "{:?}", e  // todo remove this, add custom http response.
-            )))
-        };
+        let status = conv_err!(request.parse(&body))?;
 
         let len= if status.is_partial() {
             return Ok(())
@@ -204,10 +206,70 @@ impl H1Protocol {
     }
 
     fn parse_chunked_body(&mut self, buffer: &mut BytesMut) -> PyResult<()> {
+        if let Some((more_body, data)) = self.drain_body_chunks(buffer)? {
+            let _ = self.receiver.send((more_body, data.to_vec()));
+        }
+
         Ok(())
     }
 
-    fn parser_body(&mut self, buffer: &mut BytesMut) -> PyResult<()> {
+    fn drain_body_chunks(
+        &mut self,
+        buffer: &mut BytesMut,
+    ) -> PyResult<Option<(bool, BytesMut)>> {
+
+        let mut temp_buff = BytesMut::with_capacity(FORGIVING_BUFFER_SIZE);
+        loop {
+            let res = conv_err!(parse_chunk_size(&buffer))?;
+            let (start, len) = match res {
+                Status::Complete(info) => info,
+                Status::Partial => {
+                    return if temp_buff.len() <= MIN_BUFF_SIZE {
+                        Ok(None)
+                    } else {
+                        Ok(Some((true, temp_buff)))
+                    }
+
+                },
+            };
+
+            if len == 0 {
+                let _ = buffer.split_to(start + 4);
+                return Ok(Some((false, temp_buff)))
+            }
+
+            let _ = buffer.split_to(start);
+            let body = buffer.split_to(len as usize);
+            let _ = buffer.split_to(2); // remove \r\n suffix
+
+            temp_buff.extend(body);
+
+            if temp_buff.len() >= MIN_BUFF_SIZE {
+                return Ok(Some((true, temp_buff)))
+            }
+        }
+    }
+
+    fn parse_body(&mut self, buffer: &mut BytesMut) -> PyResult<()> {
+        let (
+            more_body,
+            data,
+        ) = if buffer.len() >= self.expected_content_length {
+            let res = buffer.split_to(self.expected_content_length);
+            (false, Some(res))
+        } else if buffer.len() >= MIN_BUFF_SIZE {
+            let res = buffer.clone();
+            buffer.clear();
+            self.expected_content_length -= res.len();
+            (true, Some(res))
+        } else {
+            (true, None)
+        };
+
+        if let Some(data) = data {
+            let _ = self.receiver.send((more_body, data.to_vec()));
+        }
+
         Ok(())
     }
 

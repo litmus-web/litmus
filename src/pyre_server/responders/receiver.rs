@@ -73,6 +73,26 @@ impl DataReceiver {
             }
         }
     }
+
+
+    /// Submits a given callback to the waiter queue.
+    ///
+    /// Any waiters in the queue when the socket is able to be read from will
+    /// be taken out of the queue and invoked signalling the system's ability
+    /// to be read from again.
+    ///
+    /// All waker callbacks are invoked with no parameters or key word
+    /// arguments and are expected not to directly raise an error, in the case
+    /// that a waker does raise an error the exception is ignored and
+    /// implicitly silenced.
+    ///
+    /// Args:
+    ///     waker:
+    ///         A callback to be invoked when data can be read from the socket
+    ///         without blocking.
+    fn subscribe(&self, waker: PyObject) {
+        self.waiter_queue.push(waker);
+    }
 }
 
 

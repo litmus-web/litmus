@@ -79,7 +79,7 @@ impl DataSender {
     ///     waker:
     ///         A callback to be invoked when data can be written to the socket
     ///         without blocking.
-    fn wait_for_ready(&self, waker: PyObject) {
+    fn subscribe(&self, waker: PyObject) {
         self.waiter_queue.push(waker);
     }
 }
