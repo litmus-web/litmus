@@ -1,4 +1,6 @@
 import asyncio
+from pprint import pprint
+
 from pyre.server import Server
 
 try:
@@ -14,14 +16,15 @@ async def suprise(
         send,
         receive,
 ):
+    # print(pprint(scope))
     try:
         body = receive()
-        print(body)
+        # print(body)
     except BlockingIOError:
         fut = asyncio.get_event_loop().create_future()
         receive.subscribe(fut.set_result)
-        print("waiting")
-        print(await fut)
+        # print("waiting")
+        # print(await fut)
 
     send(
         # more body

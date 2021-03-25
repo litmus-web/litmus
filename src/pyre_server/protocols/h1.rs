@@ -148,7 +148,7 @@ impl ProtocolBuffers for H1Protocol {
         } else if self.expected_content_length > 0 {
             self.parse_body(buffer)?;
         } else {
-            let _ = self.receiver.send((false, Vec::new()));
+            let _ = self.receiver.send((false, BytesMut::with_capacity(0)));
         }
 
         self.transport()?.resume_writing()?;
@@ -209,7 +209,7 @@ impl H1Protocol {
 
     fn parse_chunked_body(&mut self, buffer: &mut BytesMut) -> PyResult<()> {
         if let Some((more_body, data)) = self.drain_body_chunks(buffer)? {
-            let _ = self.receiver.send((more_body, data.to_vec()));
+            let _ = self.receiver.send((more_body, data));
         }
 
         Ok(())
@@ -269,7 +269,7 @@ impl H1Protocol {
         };
 
         if let Some(data) = data {
-            let _ = self.receiver.send((more_body, data.to_vec()));
+            let _ = self.receiver.send((more_body, data));
         }
 
         Ok(())
@@ -301,10 +301,14 @@ impl H1Protocol {
             for header in request.headers.iter() {
                 self.check_header(&header);
 
-                let converted2: Py<PyBytes> = Py::from(PyBytes::new(
-                    py,
-                    header.value
-                ));
+                let bytes_body = unsafe {
+                    PyBytes::from_ptr(
+                        py,
+                        header.value.as_ptr(),
+                        header.value.len(),
+                    )
+                };
+                let converted2: Py<PyBytes> = Py::from(bytes_body);
                 parsed_vec.push(( header.name, converted2))
             }
 
