@@ -16,6 +16,7 @@ use crate::pyre_server::py_callback::CallbackHandler;
 use crate::pyre_server::settings::Settings;
 
 
+/// The max amount of items the queue can contain at once.
 const QUEUE_SIZE: usize = 512;
 
 

@@ -34,6 +34,8 @@ const MAX_HEADERS: usize = 100;
 /// The minimum amount the buffer needs to be filled by before a body is sent.
 const MIN_BUFF_SIZE: usize = 64 * 1024;
 
+/// A more reasonable buffer allocation size, this will stop re-allocating
+/// if they go above the MIN_BUFF_SIZE
 const FORGIVING_BUFFER_SIZE: usize = 128 * 1024;
 
 /// The protocol to add handling for the HTTP/1.x protocol.
@@ -231,7 +233,6 @@ impl H1Protocol {
                     } else {
                         Ok(Some((true, temp_buff)))
                     }
-
                 },
             };
 
