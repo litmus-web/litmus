@@ -12,7 +12,7 @@ use crossbeam::channel::{
 
 use std::sync::Arc;
 
-use crate::pyre_server::responders::{Payload, WakerQueue};
+use crate::pyre_server::responders::{SenderPayload, WakerQueue};
 
 
 /// The callable class that handling communication back to the server protocol.
@@ -20,7 +20,7 @@ use crate::pyre_server::responders::{Payload, WakerQueue};
 pub struct DataSender {
     /// The sending half of the channel used for sending data to the
     /// server handler.
-    tx: Sender<Payload>,
+    tx: Sender<SenderPayload>,
 
     /// A queue of waiting events to invoke before the body
     /// can be written to again.
@@ -29,7 +29,7 @@ pub struct DataSender {
 
 impl DataSender {
     /// Create a new handler with the given sender.
-    pub fn new(tx: Sender<Payload>, waiter_queue: WakerQueue) -> Self {
+    pub fn new(tx: Sender<SenderPayload>, waiter_queue: WakerQueue) -> Self {
         Self { tx, waiter_queue }
     }
 }
@@ -87,10 +87,10 @@ impl DataSender {
 
 pub struct SenderFactory {
     /// The sender half for sending body chunks.
-    sender_tx: Sender<Payload>,
+    sender_tx: Sender<SenderPayload>,
 
     /// The receiver half for receiving body chunks.
-    sender_rx: Receiver<Payload>,
+    sender_rx: Receiver<SenderPayload>,
 
     /// A queue of waiting events to invoke before the body
     /// can be written to again.
@@ -123,7 +123,7 @@ impl SenderFactory {
     ///
     /// This also implicitly wakes up any waiters waiting on a notifying them
     /// that they can send to the handler again.
-    pub fn recv(&self) -> Result<Payload, TryRecvError> {
+    pub fn recv(&self) -> Result<SenderPayload, TryRecvError> {
         if self.waiter_queue.len() > 0 {
             Python::with_gil(|py| {
                 while let Some(waker) = self.waiter_queue.pop() {

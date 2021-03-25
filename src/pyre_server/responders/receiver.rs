@@ -1,7 +1,9 @@
 use pyo3::prelude::*;
 use pyo3::exceptions::{PyRuntimeError, PyBlockingIOError};
+use pyo3::types::PyBytes;
 
 use std::sync::Arc;
+use bytes::BytesMut;
 use crossbeam::queue::SegQueue;
 use crossbeam::channel::{
     Sender,
@@ -11,14 +13,13 @@ use crossbeam::channel::{
     TrySendError,
 };
 
-use crate::pyre_server::responders::{Payload, WakerQueue};
-
+use crate::pyre_server::responders::{WakerQueue, ReceiverPayload};
 
 /// The callable class that handling communication back to the server protocol.
 #[pyclass]
 pub struct DataReceiver {
     /// The receiver half for receiving the client body chunks.
-    rx: Receiver<Payload>,
+    rx: Receiver<ReceiverPayload>,
 
     /// A queue of waiting events to invoke before the body
     /// can be read from the receiver again.
@@ -27,7 +28,7 @@ pub struct DataReceiver {
 
 impl DataReceiver {
     /// Create a new handler with the given sender.
-    pub fn new(rx: Receiver<Payload>, waiter_queue: WakerQueue) -> Self {
+    pub fn new(rx: Receiver<ReceiverPayload>, waiter_queue: WakerQueue) -> Self {
         Self { rx, waiter_queue }
     }
 }
@@ -55,7 +56,7 @@ impl DataReceiver {
     ///         the handler should set a waker in order to be notified when
     ///         data is available.
     #[call]
-    fn __call__(&self) -> PyResult<(bool, Vec<u8>)> {
+    fn __call__(&self) -> PyResult<(bool, Py<PyBytes>)> {
         let resp = self.rx.try_recv();
 
         return match resp {
@@ -99,10 +100,10 @@ impl DataReceiver {
 /// handler to the Python callbacks.
 pub struct ReceiverFactory {
     /// The sender half for sending the client body chunks.
-    receiver_tx: Sender<Payload>,
+    receiver_tx: Sender<ReceiverPayload>,
 
     /// The receiver half for receiving the client body chunks.
-    receiver_rx: Receiver<Payload>,
+    receiver_rx: Receiver<ReceiverPayload>,
 
     /// A queue of waiting events to invoke before the body
     /// can be read from the receiver again.
@@ -136,17 +137,22 @@ impl ReceiverFactory {
     /// from the handler, unlike the receiver version of this responder
     /// this will only pop one waiter from the queue and pass it the chunk
     /// of data vs waking all waiters.
-    pub fn send(&self, data: Payload) -> Result<(), TrySendError<Payload>> {
-        if self.waiter_queue.len() > 0 {
-            Python::with_gil(|py| {
+    pub fn send(&self, data: (bool, BytesMut)) -> Result<(), TrySendError<ReceiverPayload>> {
+        Python::with_gil(|py| {
+            let bytes_body = unsafe {
+                PyBytes::from_ptr(py, data.1.as_ptr(), data.1.len())
+            };
+            let body = Py::from(bytes_body);
+
+            if self.waiter_queue.len() > 0 {
                 if let Some(waker) = self.waiter_queue.pop() {
                     // The waker should not affect the writer
-                    let _ = waker.call1(py, data);
+                    let _ = waker.call1(py, (data.0, body));
                 }
-            });
-            Ok(())
-        } else {
-            self.receiver_tx.try_send(data)
-        }
+                Ok(())
+            } else {
+                self.receiver_tx.try_send((data.0, body))
+            }
+        })
     }
 }
