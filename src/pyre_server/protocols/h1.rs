@@ -63,6 +63,10 @@ pub struct H1Protocol {
 
     /// If the request uses chunked encoding for it's body.
     chunked_encoding: bool,
+
+    /// If the server should close the connection after the response is
+    /// complete.
+    keep_alive: bool,
 }
 
 impl H1Protocol {
@@ -81,6 +85,7 @@ impl H1Protocol {
 
             expected_content_length: 0,
             chunked_encoding: false,
+            keep_alive: true,
         }
     }
 
@@ -159,8 +164,14 @@ impl ProtocolBuffers for H1Protocol {
 
     /// Fills the passed buffer with any messages enqueued to be sent.
     fn fill_write_buffer(&mut self, buffer: &mut BytesMut) -> PyResult<()> {
-        while let Ok((_more_body, _, buff)) = self.sender.recv() {
+        while let Ok((more_body, keep_alive, buff)) = self.sender.recv() {
+            self.keep_alive = keep_alive;
             buffer.extend(buff);
+
+            if !more_body & !self.keep_alive {
+                // This will schedule the closure using call_soon.
+                self.transport()?.close()?;
+            }
         }
 
         Ok(())
@@ -287,8 +298,10 @@ impl H1Protocol {
             .expect("Version was None at complete parse");
 
         let version = if version == 0 {
+            self.keep_alive = false;
             psgi::HTTP_10
         } else if version == 1 {
+            self.keep_alive = true;
             psgi::HTTP_11
         } else {
             unreachable!()

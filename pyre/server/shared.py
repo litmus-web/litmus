@@ -1,5 +1,6 @@
 import asyncio
 from typing import Callable
+from functools import partial
 
 from .. import _Server, create_server
 
@@ -69,7 +70,7 @@ class Server:
             self._remove_reader,
             self._add_writer,
             self._remove_writer,
-            self._server.poll_close,  # it's a hack but it works.
+            self._close_socket,
         )
 
     def shutdown(self):
@@ -131,3 +132,7 @@ class Server:
     @property
     def _remove_writer(self):
         return self.loop.remove_writer
+
+    @property
+    def _close_socket(self):
+        return partial(self.loop.call_soon, self._server.poll_close)

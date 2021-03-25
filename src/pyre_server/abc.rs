@@ -42,6 +42,9 @@ pub trait ProtocolBuffers {
 
 /// Defined the necessary methods for a transport handler
 pub trait BaseTransport {
+    /// Closes the connection to the socket.
+    fn close(&self) -> PyResult<()>;
+
     /// Pauses reading of the set connection.
     fn pause_reading(&self) -> PyResult<()>;
 

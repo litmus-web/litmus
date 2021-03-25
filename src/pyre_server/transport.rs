@@ -24,6 +24,14 @@ impl Transport {
 }
 
 impl BaseTransport for Transport {
+    /// Closes the connection to the socket.
+    ///
+    /// The closing itself is invoked using loop.call_soon, this is not
+    /// guaranteed to be instant.
+    fn close(&self) -> PyResult<()> {
+        self.event_loop.close()
+    }
+
     /// Removes the file descriptor listener from the event loop
     /// therefore pausing reading callbacks.
     fn pause_reading(&self) -> PyResult<()> {

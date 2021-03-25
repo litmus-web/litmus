@@ -241,40 +241,24 @@ impl Server {
     /// Polled every x seconds where the time is equivalent to the
     /// `Server.keep_alive` duration.
     fn poll_keep_alive(&mut self)-> PyResult<()> {
+        let mut remove = Vec::new();
         for (id, client) in self.clients.iter_mut() {
             if let Some(cli) = client {
                 if !cli.idle() {
                     cli.poll_keep_alive(self.keep_alive)?;
-                } else if !cli.free() {
-                    let _ = self.free_clients.push(id);
+                } else if !cli.is_free {
+                    cli.is_free = true;
+                    if let Err(_) = self.free_clients.push(id) {
+                        remove.push(id);
+                    };
                 }
-            }
-        }
-        Ok(())
-    }
-
-    /// Checks if a client is idle or not.
-    ///
-    /// Polled every x seconds where the time is equivalent to the
-    /// `Server.idle_max` duration.
-    fn poll_idle(&mut self) {
-        let mut remove = Vec::new();
-        for (id, client) in self.clients.iter() {
-            if let Some(cli) = client {
-                if !cli.idle() | !cli.free() {
-                    continue
-                }
-
-                // We have enough free clients
-                if let Err(_) = self.free_clients.push(id) {
-                    remove.push(id);
-                };
             }
         }
 
         for id in remove {
             self.clients.remove(id);
         }
+        Ok(())
     }
 
     /// Accepts a set of pending clients from the server.

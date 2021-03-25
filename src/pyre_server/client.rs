@@ -26,7 +26,7 @@ pub struct Client {
 
     /// A boolean value that tells the server if the client has already been
     /// marked as free and is in the pool or if it has yet to be checked.
-    is_free: bool,
+    pub is_free: bool,
 
     /// Represents if the client is idle because the client has closed
     /// the connection or the protocol has closed the connection.
@@ -94,13 +94,6 @@ impl Client {
         self.event_loop.resume_reading()?;
 
         Ok(())
-    }
-
-    /// Represents if the client is free and marked by the server as being
-    /// available to new clients.
-    #[inline]
-    pub fn free(&self) -> bool {
-        self.is_free
     }
 
     /// Represents if the client is idle because the client has closed
