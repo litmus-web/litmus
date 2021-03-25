@@ -176,6 +176,16 @@ impl Client {
         Ok(())
     }
 
+    /// Closes the socket.
+    ///
+    /// This will invoke the protocol's connection lost callback in
+    /// order to allow for the state reset.
+    pub fn poll_close(&mut self) -> PyResult<()> {
+        self.handle.close();
+        self.protocol.lost_connection()?;
+        Ok(())
+    }
+
     /// Called every X seconds equal to the passed duration.
     /// This is what the protocols should use to check if the timeout
     /// period has elapsed.
