@@ -159,7 +159,7 @@ impl ProtocolBuffers for H1Protocol {
 
     /// Fills the passed buffer with any messages enqueued to be sent.
     fn fill_write_buffer(&mut self, buffer: &mut BytesMut) -> PyResult<()> {
-        while let Ok((_more_body, buff)) = self.sender.recv() {
+        while let Ok((_more_body, _, buff)) = self.sender.recv() {
             buffer.extend(buff);
         }
 

@@ -15,6 +15,8 @@ pub struct EventLoop {
 
     add_writer_: CheapPyObject,
     remove_writer_: CheapPyObject,
+
+    close_socket_: CheapPyObject,
 }
 
 impl EventLoop {
@@ -24,12 +26,14 @@ impl EventLoop {
         remove_reader: PyObject,
         add_writer: PyObject,
         remove_writer: PyObject,
+        close_socket: PyObject,
     ) -> Self {
         Self {
             add_reader_: CheapPyObject::new(add_reader),
             remove_reader_: CheapPyObject::new(remove_reader),
             add_writer_: CheapPyObject::new(add_writer),
             remove_writer_: CheapPyObject::new(remove_writer),
+            close_socket_: CheapPyObject::new(close_socket),
         }
     }
 }
@@ -41,7 +45,20 @@ impl Clone for EventLoop {
             remove_reader_: self.remove_reader_.clone(),
             add_writer_: self.add_writer_.clone(),
             remove_writer_: self.remove_writer_.clone(),
+            close_socket_: self.close_socket_.clone(),
         }
+    }
+}
+
+impl EventLoop {
+    /// Closes a socket located at the given index in the server
+    /// handler.
+    pub fn close_socket(&self, index: usize) -> PyResult<()> {
+        Python::with_gil(|py| -> PyResult<()> {
+            let _ = self.close_socket_.call1(py, (index,))?;
+            Ok(())
+        })?;
+        Ok(())
     }
 }
 
@@ -146,6 +163,7 @@ pub struct PreSetEventLoop {
 
 
 impl PreSetEventLoop {
+    /// Sets a new file descriptor and resets the internal state.
     #[cfg(unix)]
     pub fn bind_new_fd(&mut self, fd: i32) {
         self.is_reading_.store(false, Relaxed);
@@ -153,11 +171,21 @@ impl PreSetEventLoop {
         self.fd = fd;
     }
 
+    /// Sets a new file descriptor and resets the internal state.
     #[cfg(windows)]
     pub fn bind_new_fd(&mut self, fd: u64) {
         self.is_reading_.store(false, Relaxed);
         self.is_writing_.store(false, Relaxed);
         self.fd = fd;
+    }
+
+    /// Closes the set socket.
+    pub fn close(&self) -> PyResult<()> {
+        self.event_loop.close_socket(self.index)?;
+        self.is_reading_.store(false, Relaxed);
+        self.is_writing_.store(false, Relaxed);
+
+        Ok(())
     }
 
     /// Resumes the file descriptor listener waiting for when the fd can be

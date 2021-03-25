@@ -7,7 +7,9 @@ pub mod sender;
 pub mod receiver;
 
 /// The payload that gets sent to the receiver half of the channel.
-pub type SenderPayload = (bool, Vec<u8>);
+///
+/// Types equate to: more_body, keep_alive, body.
+pub type SenderPayload = (bool, bool, Vec<u8>);
 
 /// The payload that gets sent to the receiver half of the channel.
 pub type ReceiverPayload = (bool, Py<PyBytes>);

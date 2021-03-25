@@ -69,6 +69,7 @@ class Server:
             self._remove_reader,
             self._add_writer,
             self._remove_writer,
+            self._server.poll_close,  # it's a hack but it works.
         )
 
     def shutdown(self):

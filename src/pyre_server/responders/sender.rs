@@ -1,5 +1,5 @@
 use pyo3::prelude::*;
-use pyo3::exceptions::{PyRuntimeError, PyBlockingIOError};
+use pyo3::exceptions::PyBlockingIOError;
 
 use crossbeam::queue::SegQueue;
 use crossbeam::channel::{
@@ -14,6 +14,9 @@ use std::sync::Arc;
 
 use crate::pyre_server::responders::{SenderPayload, WakerQueue};
 
+const HEADER_SEPARATOR: &[u8] = ": ".as_bytes();
+const LINE_SEPARATOR: &[u8] = "\r\n".as_bytes();
+const SERVER_HEADER: &[u8] = "server: Pyre".as_bytes();
 
 /// The callable class that handling communication back to the server protocol.
 #[pyclass]
@@ -25,18 +28,63 @@ pub struct DataSender {
     /// A queue of waiting events to invoke before the body
     /// can be written to again.
     waiter_queue: WakerQueue,
+
+    /// If the response is using chunked encoding or not or not set.
+    chunked_encoding: Option<bool>,
+
+    /// If the client has defined a given content length of the body.
+    expected_content_length: usize,
 }
 
 impl DataSender {
     /// Create a new handler with the given sender.
     pub fn new(tx: Sender<SenderPayload>, waiter_queue: WakerQueue) -> Self {
-        Self { tx, waiter_queue }
+        let chunked_encoding = None;       // We expect nothing yet.
+        let expected_content_length: usize = 0;   // We expect nothing yet.
+
+        Self {
+            tx,
+            waiter_queue,
+            chunked_encoding,
+            expected_content_length,
+        }
     }
 }
 
 #[pymethods]
 impl DataSender {
-    /// Sends the given body and more_body signal to the protocol handler.
+    /// Sends the a chunk of the main body to the handler.
+    ///
+    /// This raises a `BlockingIoError` if the queue / buffer is full, the
+    /// invoker should wait till the queue / buffer is no longer full.
+    ///
+    /// Args:
+    ///     more_body:
+    ///         A boolean to determine if the server should expect any more
+    ///         chunks of body being sent or if the request is regarded as
+    ///         being 'complete'.
+    ///
+    ///     body:
+    ///         A chunk of bytes to be written to the socket.
+    fn send_body(&self, more_body: bool, body: Vec<u8>) -> PyResult<()> {
+        if self.expected_content_length == 0 {
+            return Ok(())
+        }
+
+        let payload = (more_body, true, body);
+        if let Err(e) = self.tx.try_send(payload) {
+            if let TrySendError::Full(_) = e {
+                return Err(PyBlockingIOError::new_err(()))
+            }
+
+            // The connection has been dropped, ignore.
+            return Ok(())
+        }
+
+        Ok(())
+    }
+
+    /// Sends the start of the response body to the handler.
     ///
     /// This raises a `BlockingIoError` if the queue / buffer is full, the
     /// invoker should wait till the queue / buffer is no longer full.
@@ -51,17 +99,106 @@ impl DataSender {
     ///
     ///     body:
     ///         A chunk of bytes to be written to the socket.
-    #[call]
-    fn __call__(&self, more_body: bool, body: Vec<u8>) -> PyResult<()> {
-        if let Err(e) = self.tx.try_send((more_body, body)) {
-            if let TrySendError::Full(_) = e {
-                return Err(PyBlockingIOError::new_err(()))
+    fn send_start(
+        &mut self,
+        status_code: u16,
+        resp_headers: Vec<(&[u8], &[u8])>
+    ) -> PyResult<()> {
+        let mut keep_alive = true;
+        let mut out = Vec::with_capacity(resp_headers.len() + 4);
+
+        let status = match http::StatusCode::from_u16(status_code) {
+            Ok(s) => s,
+            Err(_) => panic!("invalid status code given"),
+        };
+        let status_block = format!(
+            "HTTP/1.1 {} {}",
+            status.as_str(),
+            status.canonical_reason().unwrap_or_else(|| ""),
+        ).as_bytes().to_vec();
+        out.push(status_block);
+
+        for (name, value) in resp_headers {
+            let name = match headers::HeaderName::from_bytes(name) {
+                Ok(s) => s,
+                Err(_) => panic!("invalid header name given"),
+            };
+
+            let value = match headers::HeaderValue::from_bytes(value) {
+                Ok(s) => s,
+                Err(_) => panic!("invalid status code given"),
+            };
+
+            match &name {
+                &http::header::CONTENT_LENGTH => {
+                    self.expected_content_length = value
+                        .to_str()
+                        .expect("content length header is not ASCII encodable")
+                        .parse()
+                        .expect("content length header contains invalid integer")
+                },
+                &http::header::TRANSFER_ENCODING => {
+                    let temp_val = value.as_ref();
+                    if temp_val.len() == 7 {
+                        // This compares each explicit character,
+                        // in this case a for loop is a lot of extra overhead
+                        // for no reason and can lead to attacks.
+                        if
+                        (temp_val[0] == 99) &   // c
+                        (temp_val[1] == 104) &  // h
+                        (temp_val[2] == 117) &  // u
+                        (temp_val[3] == 110) &  // n
+                        (temp_val[4] == 107) &  // k
+                        (temp_val[5] == 101) &  // e
+                        (temp_val[6] == 100)    // d
+                        {
+                            self.chunked_encoding = Some(true);
+                        }
+                    };
+                },
+                &http::header::CONNECTION => {
+                    let temp_val = value.as_ref();
+                    if temp_val.len() == 5 {
+                        if
+                        (temp_val[0] == 99) &   // c
+                        (temp_val[1] == 108) &  // l
+                        (temp_val[2] == 111) &  // o
+                        (temp_val[3] == 115) &  // s
+                        (temp_val[4] == 101)    // e
+                        {
+                            keep_alive = false;
+                        }
+                    }
+                },
+                _ => {},
             }
 
-            return Err(PyRuntimeError::new_err(format!("{:?}", e)))
+            let res = [
+                name.as_ref(),
+                value.as_bytes(),
+            ].join(HEADER_SEPARATOR);
+
+            out.push(res);
         }
 
-        Ok(())
+
+        let formatted_date_header = format!(
+            "date: {}",
+            httpdate::fmt_http_date(std::time::SystemTime::now()),
+        ).as_bytes().to_vec();
+        out.push(formatted_date_header);    // Date
+        out.push(SERVER_HEADER.to_vec());   // Server
+        out.push(LINE_SEPARATOR.to_vec());  // End of Headers
+
+        // Joins all separate lines into a single block with \r\n joining them.
+        let start_block = out.join(LINE_SEPARATOR);
+
+        return match self.tx.try_send((true, keep_alive, start_block)) {
+            Err(TrySendError::Full(_)) => {
+                Err(PyBlockingIOError::new_err(()))
+            },
+            _ => Ok(()),
+        }
     }
 
     /// Submits a given callback to the waiter queue.

@@ -139,7 +139,9 @@ impl Server {
 
 #[pymethods]
 impl Server {
-    /// Starts the server by adding a waiter for the listener's file descriptor
+    /// Starts the server.
+    ///
+    /// This works by adding a waiter for the listener's file descriptor
     /// for when the listener can accept a client(s).
     fn start(
         &mut self,
@@ -154,8 +156,10 @@ impl Server {
         Ok(())
     }
 
-    /// Shuts down the server and cancels all clients in the process of
-    /// being handled, this also removed the file descriptor waiters.
+    /// Shuts down the server.
+    ///
+    /// This cancels all clients in the process of being handled,
+    /// this also removed the file descriptor waiters.
     fn shutdown(&mut self) -> PyResult<()> {
         for (_, v) in self.clients.iter_mut() {
             if let Some(cli) = v {
@@ -168,6 +172,8 @@ impl Server {
         Ok(())
     }
 
+    /// Initialised the server with all needed callbacks.
+    ///
     /// Called just after the handle has been created, this passes event loop
     /// references with it's callback pre set to itself.
     fn init(
@@ -176,21 +182,26 @@ impl Server {
         remove_reader: PyObject,
         add_writer: PyObject,
         remove_writer: PyObject,
+        close_socket: PyObject,
     ) {
         let event_loop = EventLoop::new(
             add_reader,
             remove_reader,
             add_writer,
             remove_writer,
+            close_socket,
         );
 
         self.event_loop_ = Some(event_loop);
     }
 
+    /// The total amount of clients.
     fn len_clients(&self) -> usize {
         self.clients.len()
     }
 
+    /// Invokes a read event on a given handler.
+    ///
     /// Invoked by the python event loop when the file descriptor is ready to be
     /// read from without blocking, in this case the `index` parameter is
     /// what determines which stream is actually ready and which handler
@@ -202,6 +213,8 @@ impl Server {
         Ok(())
     }
 
+    /// Invokes a write event on a given handler.
+    ///
     /// Invoked by the python event loop when the file descriptor is ready to be
     /// written to without blocking, in this case the `index` parameter is
     /// what determines which stream is actually ready and which handler
@@ -213,6 +226,18 @@ impl Server {
         Ok(())
     }
 
+    /// Invokes a close event on a given handler.
+    ///
+    fn poll_close(&mut self, index: usize) -> PyResult<()> {
+        if let Some(cli) = self.clients[index].as_mut() {
+            cli.poll_close()?;
+        }
+        Ok(())
+    }
+
+    /// Checks if any clients need to close sockets from a keep alive
+    /// timeout.
+    ///
     /// Polled every x seconds where the time is equivalent to the
     /// `Server.keep_alive` duration.
     fn poll_keep_alive(&mut self)-> PyResult<()> {
@@ -228,6 +253,8 @@ impl Server {
         Ok(())
     }
 
+    /// Checks if a client is idle or not.
+    ///
     /// Polled every x seconds where the time is equivalent to the
     /// `Server.idle_max` duration.
     fn poll_idle(&mut self) {
@@ -250,6 +277,8 @@ impl Server {
         }
     }
 
+    /// Accepts a set of pending clients from the server.
+    ///
     /// Invoked by the python event loop when the listener is ready to be
     /// accepted from without blocking, because this can have multiple clients
     /// queued up we have a backlog which determines how many times we call

@@ -26,15 +26,16 @@ async def suprise(
         # print("waiting")
         # print(await fut)
 
-    send(
-        # more body
+    send.send_start(
+        200,
+        (
+            (b"Content-Length", b"13"),
+            (b"Content-Type", b"text/plain"),
+        )
+    )
+
+    send.send_body(
         False,
-        # body
-        b"HTTP/1.1 200 OK\r\n"
-        b"Content-Length: 13\r\n"
-        b"Content-Type: text/plain\r\n"
-        b"Server: Pyre\r\n"
-        b"\r\n"
         b"Hello, World!"
     )
 
