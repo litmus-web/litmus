@@ -112,7 +112,7 @@ pub struct ReceiverFactory {
 impl ReceiverFactory {
     /// Constructs a new factory.
     pub fn new() -> Self {
-        let (tx, rx) = bounded(10);
+        let (tx, rx) = bounded(2);
         let queue = Arc::new(SegQueue::new());
 
         Self {
