@@ -246,7 +246,9 @@ impl Server {
             if let Some(cli) = client {
                 if !cli.idle() {
                     cli.poll_keep_alive(self.keep_alive)?;
-                } else if !cli.is_free {
+                }
+
+                if !cli.is_free {
                     cli.is_free = true;
                     if let Err(_) = self.free_clients.push(id) {
                         remove.push(id);

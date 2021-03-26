@@ -34,9 +34,6 @@ pub struct Client {
 
     /// When data was last received.
     last_time: Instant,
-
-    /// The instant since the client was set to idle.
-    idle_for: Instant,
 }
 
 impl Client {
@@ -66,10 +63,9 @@ impl Client {
             handle,
             protocol,
 
-            is_free: true,
+            is_free: false,
             is_idle: false,
             last_time: Instant::now(),
-            idle_for: Instant::now(),
         })
     }
 
@@ -129,7 +125,6 @@ impl Client {
             SocketStatus::Disconnect => {
                 self.protocol.lost_connection()?;
                 self.is_idle = true;
-                self.idle_for = Instant::now();
                 return self.shutdown();
             },
         };
@@ -159,7 +154,6 @@ impl Client {
             SocketStatus::Disconnect => {
                 self.protocol.lost_connection()?;
                 self.is_idle = true;
-                self.idle_for = Instant::now();
                 return self.shutdown();
             },
         };
@@ -175,7 +169,9 @@ impl Client {
     /// order to allow for the state reset.
     pub fn poll_close(&mut self) -> PyResult<()> {
         self.handle.close();
+        self.is_idle = true;
         self.protocol.lost_connection()?;
+        self.shutdown()?;
         Ok(())
     }
 
@@ -186,9 +182,10 @@ impl Client {
         if self.last_time.elapsed() >= limit {
             self.handle.close();
             self.is_idle = true;
-            self.idle_for = Instant::now();
-            return self.shutdown()
+            self.protocol.lost_connection()?;
+            self.shutdown()?;
         }
         Ok(())
     }
 }
+

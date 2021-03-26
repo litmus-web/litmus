@@ -314,7 +314,6 @@ impl H1Protocol {
             let mut parsed_vec = Vec::with_capacity(request.headers.len());
             for header in request.headers.iter() {
                 self.check_header(&header);
-
                 let bytes_body = unsafe {
                     PyBytes::from_ptr(
                         py,
