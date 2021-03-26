@@ -73,6 +73,8 @@ impl AutoProtocol {
     /// the `Transport` can be used to pause and resume reading from this
     /// socket.
     pub fn new_connection(&mut self, transport: Transport) -> PyResult<()> {
+        self.writer_buffer.clear();
+        self.reader_buffer.clear();
         return match self.selected {
             SelectedProtocol::H1 => {
                 self.h1.new_connection(transport)

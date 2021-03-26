@@ -189,3 +189,8 @@ impl Client {
     }
 }
 
+impl Drop for Client {
+    fn drop(&mut self) {
+        println!("being dropped");
+    }
+}

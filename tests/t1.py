@@ -3,13 +3,14 @@ from pprint import pprint
 
 from pyre.server import Server
 
-try:
+"""try:
     import uvloop
     uvloop.install()
 except ImportError:
     loop = asyncio.SelectorEventLoop()
-    asyncio.set_event_loop(loop)
-
+    asyncio.set_event_loop(loop)"""
+loop = asyncio.SelectorEventLoop()
+asyncio.set_event_loop(loop)
 
 async def suprise(
         scope,
@@ -38,6 +39,7 @@ async def suprise(
         False,
         b"Hello, World!"
     )
+    print("done!")
 
 
 async def main():

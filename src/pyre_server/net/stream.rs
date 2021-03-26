@@ -82,6 +82,7 @@ impl TcpHandle {
     /// result with the number of bytes written to the socket if the operation
     /// is a success.
     pub fn write(&mut self, buffer: &mut BytesMut) -> PyResult<SocketStatus> {
+        println!("writing: {:?}", buffer);  // todo fix infinite polling
         let len = match self.stream.write(buffer) {
             Ok(n) => n,
             Err(ref e) if e.kind() == ErrorKind::WouldBlock => {
