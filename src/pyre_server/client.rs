@@ -117,6 +117,10 @@ impl Client {
 
     /// Handles reading from the given socket to a acquired buffer.
     pub fn poll_read(&mut self) -> PyResult<()> {
+        if self.is_idle {
+            return Ok(())
+        }
+
         let buffer = self.protocol.read_buffer_acquire()?;
 
         let len = match self.handle.read(buffer)? {
@@ -146,6 +150,10 @@ impl Client {
 
     /// Handles writing to the given socket from a acquired buffer.
     pub fn poll_write(&mut self) -> PyResult<()> {
+        if self.is_idle {
+            return Ok(())
+        }
+
         let buffer = self.protocol.write_buffer_acquire()?;
 
         let len = match self.handle.write(buffer)? {
