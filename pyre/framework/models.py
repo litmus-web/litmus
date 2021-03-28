@@ -1,6 +1,6 @@
 from typing import List, Union, Tuple, Optional, Any
 from dataclasses import dataclass
-from functools import cache
+from functools import lru_cache
 
 
 @dataclass(frozen=True, repr=True)
@@ -135,7 +135,7 @@ class Headers(FrozenCollection):
 
         return super().get(key)
 
-    @cache
+    @lru_cache()
     def get_one(self, key: str) -> Optional[bytes]:
         """
         Attempts to get a value of a given key that may or may not exist.

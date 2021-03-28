@@ -107,6 +107,12 @@ class HTTPRequest(BaseRequest):
         route:
             The url path section of the HTTP request.
 
+        parameters:
+            The raw url query parameters given as a un-decoded set of bytes.
+
+        url_args:
+            The extracted arguments gotten from the url.
+
         cookies:
             The cookies of the given http request.
 
@@ -133,6 +139,7 @@ class HTTPRequest(BaseRequest):
         self,
         route: str,
         parameters: bytes,
+        url_args: dict,
         cookies: Cookies,
         session: Session,
         headers: t.List[t.Tuple[str, bytes]],
@@ -140,6 +147,7 @@ class HTTPRequest(BaseRequest):
         server: t.Tuple[str, int],
         client: t.Tuple[str, int],
     ):
+        self._url_args = url_args
         self._cookies = cookies
         self._session = session
 
