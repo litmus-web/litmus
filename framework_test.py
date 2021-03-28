@@ -19,6 +19,11 @@ class Test(Blueprint):
     async def foo_middleware(self, req):
         ...
 
+    @endpoint("/hello/{foo:string}")
+    async def bar(self, req):
+        print("wew")
+
+
 
 if __name__ == '__main__':
     t = Test()
@@ -26,4 +31,5 @@ if __name__ == '__main__':
     router.apply_methods(t)
 
     print(t.foo.route)
+    print(t._endpoints)
     asyncio.run(t.foo(""))
