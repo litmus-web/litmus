@@ -1,0 +1,13 @@
+[package]
+name = "pyre-framework"
+version = "0.1.1"
+authors = ["Harrison Burt <57491488+ChillFish8@users.noreply.github.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[dependencies.pyo3]
+git = "https://github.com/PyO3/pyo3.git"
+features = ["extension-module"]
+
+[dependencies]
+regex = "1.4"
