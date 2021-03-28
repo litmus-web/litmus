@@ -13,6 +13,8 @@ use pyre_server::responders::sender::DataSender;
 use pyre_server::server::Server;
 use pyre_server::settings::Settings;
 
+use pyre_framework::RouterMatcher;
+
 #[cfg(not(target_env = "msvc"))]
 #[global_allocator]
 static GLOBAL: Jemalloc = Jemalloc;
@@ -69,5 +71,6 @@ fn pyre(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<Server>()?;
     m.add_class::<DataSender>()?;
     m.add_class::<DataReceiver>()?;
+    m.add_class::<RouterMatcher>()?;
     Ok(())
 }

@@ -52,6 +52,6 @@ impl RouterMatcher {
         let cb = self.routes.get(id)?;
         let cloned = cb.clone_ref(py);
 
-        return Some(cloned)
+        Some(cloned)
     }
 }

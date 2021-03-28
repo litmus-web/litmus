@@ -3,7 +3,7 @@ import re
 import typing as t
 
 from .converters import parameter_converter, NoDefault
-from .request import Request
+from .request import HTTPRequest
 
 __all__ = [
     "Blueprint",
@@ -74,9 +74,9 @@ def parse_route(route_str: str) -> str:
 
 
 def _make_converter(
-        annotation: t.Any,
-        default: t.Any,
-        cache_handler: t.Callable,
+    annotation: t.Any,
+    default: t.Any,
+    cache_handler: t.Callable,
 ):
     """
     _make_converter produces a Callable type object that when called
@@ -110,8 +110,8 @@ def _make_converter(
 
 
 def _compile_converter(
-        inspection: inspect.FullArgSpec,
-        cache_handler: t.Callable,
+    inspection: inspect.FullArgSpec,
+    cache_handler: t.Callable,
 ):
     """
     _compile_converter works by taking in the inspected function
@@ -159,12 +159,12 @@ class BaseEndpoint:
     """
 
     def __init__(
-            self,
-            route: str,
-            callback: t.Callable,
-            before_invoke: t.Optional[t.Callable],
-            on_error: t.Optional[t.Callable],
-            converter_cache: t.Callable,
+        self,
+        route: str,
+        callback: t.Callable,
+        before_invoke: t.Optional[t.Callable],
+        on_error: t.Optional[t.Callable],
+        converter_cache: t.Callable,
     ):
         self.callback_name = callback.__name__
         self.callback = callback
@@ -182,12 +182,12 @@ class BaseEndpoint:
         self._raw_route = route
         self._compiled_route = parse_route(route)
 
-    async def __call__(self, request):
+    async def __call__(self, request: HTTPRequest):
         try:
+            request.args = map(_convert, zip(request.args, self._converters))
             if self.before_invoke is not None:
                 request = await self.before_invoke(request) or request
-            new_args = map(_convert, zip(request.args, self._converters))
-            return await self.callback(request, *new_args)
+            return await self.callback(request, *request.args)
         except Exception as e:
             if self.on_error is not None:
                 await self.on_error(request, e)
@@ -201,13 +201,13 @@ class BaseEndpoint:
 
 class HTTPEndpoint(BaseEndpoint):
     def __init__(
-            self,
-            route: str,
-            callback: t.Callable,
-            before_invoke: t.Optional[t.Callable] = None,
-            on_error: t.Optional[t.Callable] = None,
-            converter_cache: t.Callable = None,
-            **_options
+        self,
+        route: str,
+        callback: t.Callable,
+        before_invoke: t.Optional[t.Callable] = None,
+        on_error: t.Optional[t.Callable] = None,
+        converter_cache: t.Callable = None,
+        **_options
     ):
         """
         The main HTTP endpoint for standard routes. This is is created when
@@ -218,7 +218,7 @@ class HTTPEndpoint(BaseEndpoint):
         actually methods created (If it is a class blueprint) due to the
         nature of python instance.
 
-        args:
+        Args:
             route:
                 The raw route of the endpoint using the framework
                 placeholders e.g. 'hello/world/{name:alpha}'

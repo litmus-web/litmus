@@ -20,9 +20,9 @@ class NoDefault:
 
 
 def parameter_converter(
-        possible_types: list,
-        default_return: t.Any,
-        cache_handler: t.Optional[t.Callable],
+    possible_types: list,
+    default_return: t.Any,
+    cache_handler: t.Optional[t.Callable],
 ):
     """
     parameter_converter is used for converting annotated parameters
