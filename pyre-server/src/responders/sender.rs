@@ -12,7 +12,7 @@ use crossbeam::channel::{
 
 use std::sync::Arc;
 
-use crate::pyre_server::responders::{SenderPayload, WakerQueue};
+use crate::responders::{SenderPayload, WakerQueue};
 
 const HEADER_SEPARATOR: &[u8] = ": ".as_bytes();
 const LINE_SEPARATOR: &[u8] = "\r\n".as_bytes();

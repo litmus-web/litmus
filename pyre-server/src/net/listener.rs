@@ -10,7 +10,7 @@ use std::os::windows::io::AsRawSocket;
 #[cfg(unix)]
 use std::os::unix::io::AsRawFd;
 
-use crate::pyre_server::net::stream::TcpHandle;
+use crate::net::stream::TcpHandle;
 
 
 /// Represents the state of the socket that is accepting connections.

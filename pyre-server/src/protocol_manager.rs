@@ -1,12 +1,12 @@
 use pyo3::PyResult;
 use bytes::BytesMut;
 
-use crate::pyre_server::abc::{SocketCommunicator, ProtocolBuffers, BaseTransport};
-use crate::pyre_server::switch::{Switchable, SwitchStatus};
-use crate::pyre_server::protocols::h1;
-use crate::pyre_server::transport::Transport;
-use crate::pyre_server::py_callback::CallbackHandler;
-use crate::pyre_server::settings::Settings;
+use crate::abc::{SocketCommunicator, ProtocolBuffers, BaseTransport};
+use crate::switch::{Switchable, SwitchStatus};
+use crate::protocols::h1;
+use crate::transport::Transport;
+use crate::py_callback::CallbackHandler;
+use crate::settings::Settings;
 
 
 const MAX_BUFFER_LIMIT: usize = 256 * 1024;

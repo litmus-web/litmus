@@ -8,12 +8,12 @@ use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 use std::time::Duration;
 
-use crate::pyre_server::client::Client;
-use crate::pyre_server::net::listener::{NoneBlockingListener, Status};
-use crate::pyre_server::net::stream::TcpHandle;
-use crate::pyre_server::event_loop::{PreSetEventLoop, EventLoop};
-use crate::pyre_server::py_callback::CallbackHandler;
-use crate::pyre_server::settings::Settings;
+use crate::client::Client;
+use crate::net::listener::{NoneBlockingListener, Status};
+use crate::net::stream::TcpHandle;
+use crate::event_loop::{PreSetEventLoop, EventLoop};
+use crate::py_callback::CallbackHandler;
+use crate::settings::Settings;
 
 
 /// The max amount of items the queue can contain at once.

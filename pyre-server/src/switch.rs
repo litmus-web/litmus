@@ -1,6 +1,6 @@
 use pyo3::PyResult;
 
-use crate::pyre_server::protocol_manager::SelectedProtocol;
+use crate::protocol_manager::SelectedProtocol;
 
 
 /// Defines the two states a protocol's switch status can be either SwitchTo

@@ -13,7 +13,7 @@ use crossbeam::channel::{
     TrySendError,
 };
 
-use crate::pyre_server::responders::{WakerQueue, ReceiverPayload};
+use crate::responders::{WakerQueue, ReceiverPayload};
 
 /// The callable class that handling communication back to the server protocol.
 #[pyclass]

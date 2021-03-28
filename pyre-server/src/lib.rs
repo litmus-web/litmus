@@ -10,4 +10,4 @@ pub mod server;
 pub mod py_callback;
 pub mod responders;
 pub mod settings;
-mod psgi;
+pub mod psgi;

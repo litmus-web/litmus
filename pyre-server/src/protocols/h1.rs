@@ -15,14 +15,14 @@ use httparse::{Header, Request, Status, parse_chunk_size};
 use http::header::{CONTENT_LENGTH, TRANSFER_ENCODING};
 use http::uri::Uri;
 
-use crate::pyre_server::abc::{ProtocolBuffers, BaseTransport};
-use crate::pyre_server::switch::{Switchable, SwitchStatus};
-use crate::pyre_server::transport::Transport;
-use crate::pyre_server::py_callback::CallbackHandler;
-use crate::pyre_server::responders::sender::SenderFactory;
-use crate::pyre_server::responders::receiver::ReceiverFactory;
-use crate::pyre_server::settings::Settings;
-use crate::pyre_server::psgi;
+use crate::abc::{ProtocolBuffers, BaseTransport};
+use crate::switch::{Switchable, SwitchStatus};
+use crate::transport::Transport;
+use crate::py_callback::CallbackHandler;
+use crate::responders::sender::SenderFactory;
+use crate::responders::receiver::ReceiverFactory;
+use crate::settings::Settings;
+use crate::psgi;
 
 macro_rules! conv_err {
     ( $e:expr ) => ( $e.map_err(|e| PyRuntimeError::new_err(format!("{}", e))) )

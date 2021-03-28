@@ -6,18 +6,17 @@ use jemallocator::Jemalloc;
 use pyo3::prelude::*;
 use pyo3::wrap_pyfunction;
 
-use crate::pyre_server::net::listener::NoneBlockingListener;
-use crate::pyre_server::py_callback::CallbackHandler;
-use crate::pyre_server::responders::receiver::DataReceiver;
-use crate::pyre_server::responders::sender::DataSender;
-use crate::pyre_server::server::Server;
-use crate::pyre_server::settings::Settings;
+use pyre_server::net::listener::NoneBlockingListener;
+use pyre_server::py_callback::CallbackHandler;
+use pyre_server::responders::receiver::DataReceiver;
+use pyre_server::responders::sender::DataSender;
+use pyre_server::server::Server;
+use pyre_server::settings::Settings;
 
 #[cfg(not(target_env = "msvc"))]
 #[global_allocator]
 static GLOBAL: Jemalloc = Jemalloc;
 
-mod pyre_server;
 
 /// Creates a client handler instance linked to a TcpListener and event loop.
 ///

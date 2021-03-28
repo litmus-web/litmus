@@ -1,13 +1,13 @@
 use pyo3::PyResult;
 use std::time::{Instant, Duration};
 
-use crate::pyre_server::abc::SocketCommunicator;
-use crate::pyre_server::net::stream::{TcpHandle, SocketStatus};
-use crate::pyre_server::event_loop::PreSetEventLoop;
-use crate::pyre_server::protocol_manager::{AutoProtocol, SelectedProtocol};
-use crate::pyre_server::transport::Transport;
-use crate::pyre_server::py_callback::CallbackHandler;
-use crate::pyre_server::settings::Settings;
+use crate::abc::SocketCommunicator;
+use crate::net::stream::{TcpHandle, SocketStatus};
+use crate::event_loop::PreSetEventLoop;
+use crate::protocol_manager::{AutoProtocol, SelectedProtocol};
+use crate::transport::Transport;
+use crate::py_callback::CallbackHandler;
+use crate::settings::Settings;
 
 
 /// A wrapper around the standard tcp stream and addr to produce a interface
