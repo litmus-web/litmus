@@ -18,32 +18,8 @@ class Test(Blueprint):
     def __init__(self):
         ...
 
-    @endpoint("/404")
+    @endpoint("/hello")
     async def t6(self, _):
-        return responses.TextResponse("hello")
-
-    @endpoint("/200")
-    async def t1(self, _):
-        return responses.TextResponse("hello")
-
-    @endpoint("/numbers/{foo:int}")
-    async def t2(self, _, foo):
-        return responses.TextResponse(f"hello number {foo}")
-
-    @endpoint("/get", methods=["GET"])
-    async def t3(self, _):
-        return responses.TextResponse("hello")
-
-    @endpoint("/post", methods=["POST"])
-    async def t4(self, _):
-        return responses.TextResponse("hello")
-
-    @endpoint("/put", methods=["PUT"])
-    async def t5(self, _):
-        return responses.TextResponse("hello")
-
-    @endpoint("/delete", methods=["DELETE"])
-    async def t7(self, _):
         return responses.TextResponse("hello")
 
 
@@ -64,3 +40,4 @@ if __name__ == '__main__':
 
 
     asyncio.get_event_loop().run_until_complete(main())
+

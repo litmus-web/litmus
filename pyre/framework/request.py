@@ -32,6 +32,17 @@ class BaseRequest:
         client:
             The remote client host and port.
     """
+
+    __slots__ = (
+        "_path",
+        "_query",
+        "_headers",
+        "_server",
+        "_client",
+        "__more_body",
+        "__receive",
+    )
+
     def __init__(
         self,
         route: str,
@@ -135,6 +146,21 @@ class HTTPRequest(BaseRequest):
         client:
             The remote client host and port.
     """
+
+    __slots__ = (
+        "_path",
+        "_query",
+        "_headers",
+        "_server",
+        "_client",
+        "_cookies",
+        "_session",
+        "_method",
+        "_args",
+        "__more_body",
+        "__receive",
+    )
+
     def __init__(
         self,
         route: str,
@@ -148,12 +174,20 @@ class HTTPRequest(BaseRequest):
         server: t.Tuple[str, int],
         client: t.Tuple[str, int],
     ):
-        self.args = url_args
+        self._args = url_args
         self._cookies = cookies
         self._session = session
         self._method = method
 
         super().__init__(route, parameters, headers, receive, server, client)
+
+    @property
+    def args(self):
+        return self._args
+
+    @args.setter
+    def args(self, value):
+        self._args = value
 
     @property
     def cookies(self) -> Cookies:
