@@ -15,13 +15,16 @@ class BaseResponse:
         self.headers = headers or {}
         self.content_type = content_type
 
-    def to_raw(self) -> Tuple[dict, dict]:
+    def to_raw(self, extra_headers=None) -> Tuple[dict, dict]:
         if isinstance(self.body, str):
             self.body = self.body.encode()
 
         headers = [
-            (b'content-length', len(self.body)),
+            (b'content-length', b"%d" % len(self.body)),
         ]
+
+        if extra_headers is not None:
+            headers.extend(extra_headers)
 
         for key, value in self.headers.items():
             headers.append((key.encode(), value.encode()))

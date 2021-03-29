@@ -44,7 +44,13 @@ class Parameters(FrozenCollection):
         """
 
         parts = {}
-        pairs = data.split("&")
+        pairs = set(data.split("&"))
+
+        try:
+            pairs.remove('')
+        except KeyError:
+            pass
+
         for pair in pairs:
             key, value = pair.split("=", maxsplit=1)
             parts[key] = value

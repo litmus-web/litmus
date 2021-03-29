@@ -18,7 +18,7 @@ _converter_re = re.compile(r"{([^}]+):([^}]+)}", re.VERBOSE)
 _standard_type_re_converter = {
     "alpha": r"[A-Za-z]+",
     "alnum": r"[A-Za-z0-9]+",
-    "string": r"[^\/]*",
+    "string": r"[^/]*",
     "int": r"[0-9]+",
     "path": r".*",
     "uuid": r"\b[0-9a-f]{8}\b-[0-9a-f]{4}-[0-9a-f]"
@@ -144,7 +144,7 @@ def _compile_converter(
 
 
 def _convert(parts):
-    return parts[1](parts[0])
+    return parts[0][0], parts[1](parts[0][1])
 
 
 class BaseEndpoint:
@@ -185,10 +185,13 @@ class BaseEndpoint:
 
     async def __call__(self, request: HTTPRequest):
         try:
-            request.args = map(_convert, zip(request.args, self._converters))
+            request.args = dict(map(
+                _convert,
+                zip(request.args.items(), self._converters),
+            ))
             if self.before_invoke is not None:
                 request = await self.before_invoke(request) or request
-            return await self.callback(request, *request.args)
+            return await self.callback(request, **request.args)
         except Exception as e:
             if self.on_error is not None:
                 await self.on_error(request, e)
@@ -262,7 +265,7 @@ class HTTPEndpoint(BaseEndpoint):
         return f"Endpoint(" \
                f"name={self.callback_name!r}, " \
                f"raw_route={self._raw_route!r}, " \
-               f"compiled_route={self.route!r})"
+               f"compiled_route={self._compiled_route!r})"
 
 
 class Blueprint:
@@ -289,7 +292,7 @@ class Blueprint:
                 cls._endpoints.append(v)
                 setattr(cls, v.callback_name, v.original_callback)
 
-    async def invoke_endpoint(self, ep, request):
+    async def invoke_endpoint(self, ep, request: HTTPRequest):
         """
         Invokes a given endpoint instance with a given request.
 
@@ -304,7 +307,7 @@ class Blueprint:
                 A given request instance containing any relevant context.
         """
         try:
-            await ep(request)
+            return await ep(request)
         except Exception as e:
             await self.on_blueprint_error(request, e)
 

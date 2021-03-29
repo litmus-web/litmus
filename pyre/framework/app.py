@@ -1,16 +1,20 @@
 from typing import Optional, List, Tuple, Any
 
+from .. import RouterMatcher
+
 from .router import HTTPEndpoint, Blueprint, apply_methods
 from .models import Cookies
 from .sessions import Session
 from .request import HTTPRequest
 from .responses import TextResponse, BaseResponse
 
-from .. import RouterMatcher
-
 
 def _convert_header(data: Tuple[bytes, bytes]) -> Tuple[str, bytes]:
     return data[0].decode('ascii'), data[1]
+
+
+async def app(scope, receive, send):
+    print("wew")
 
 
 class App:
@@ -25,7 +29,7 @@ class App:
         next_id = len(self._blueprints)
         for ep in inst._endpoints:
             ep.id = next_id
-            self._endpoints.append(ep)  # private but needed
+            self._endpoints.append(getattr(inst, ep.callback_name))
 
         self._blueprints.append(inst)
 
@@ -34,7 +38,10 @@ class App:
             to_compile.append((endpoint.route, endpoint))
         self._matcher = RouterMatcher(to_compile)
 
-    async def asgi_app(self, scope, send, receive):
+    async def __call__(self, scope, receive, send):
+        await self.asgi_app(scope, receive, send)
+
+    async def asgi_app(self, scope, receive, send):
         if scope['asgi'].get("type"):
             return
 
@@ -100,10 +107,15 @@ class App:
             server=server,
         )
 
-        bp = self._blueprints[ep.id]
-        response: BaseResponse = await bp.invoke_endpoint(ep, request)
+        headers = cookies.to_headers()
 
-        p1, p2 = response.to_raw()
+        bp = self._blueprints[ep.id]
+        response: Optional[BaseResponse] = await bp.invoke_endpoint(ep, request)
+
+        if response is None:
+            response = TextResponse("Internal Server Error", status=500)
+
+        p1, p2 = response.to_raw(extra_headers=headers)
         await send(p1)
         await send(p2)
 

@@ -1,6 +1,9 @@
-import asyncio
+import uvicorn
 
-from pyre.framework import Blueprint, endpoint, router
+from pyre import framework
+from pyre.framework import Blueprint, endpoint, App, responses
+
+app = App()
 
 
 class Test(Blueprint):
@@ -8,8 +11,8 @@ class Test(Blueprint):
         ...
 
     @endpoint("/hello/{foo:string}")
-    async def foo(self, req):
-        print("wew")
+    async def foo(self, _, foo):
+        return responses.TextResponse(f"hello, {foo}!")
 
     @foo.error
     async def foo_error(self, req, err):
@@ -24,12 +27,7 @@ class Test(Blueprint):
         print("wew")
 
 
-
 if __name__ == '__main__':
-    t = Test()
+    app.add_blueprint(Test())
 
-    router.apply_methods(t)
-
-    print(t.foo.route)
-    print(t._endpoints)
-    asyncio.run(t.foo(""))
+    uvicorn.run(app, host="127.0.0.1", port=8080)

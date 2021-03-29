@@ -147,7 +147,7 @@ class HTTPRequest(BaseRequest):
         server: t.Tuple[str, int],
         client: t.Tuple[str, int],
     ):
-        self._url_args = url_args
+        self.args = url_args
         self._cookies = cookies
         self._session = session
 
