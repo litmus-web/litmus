@@ -4,6 +4,7 @@ import typing as t
 
 from .converters import parameter_converter, NoDefault
 from .request import HTTPRequest
+from .responses import TextResponse
 
 __all__ = [
     "Blueprint",
@@ -165,12 +166,14 @@ class BaseEndpoint:
         before_invoke: t.Optional[t.Callable],
         on_error: t.Optional[t.Callable],
         converter_cache: t.Callable,
+        methods: t.Optional[tuple],
     ):
         self.id = -1
         self.callback_name = callback.__name__
         self.callback = callback
         self.before_invoke = before_invoke
         self.on_error = on_error
+        self.methods = methods
 
         self._converter_cache = converter_cache
 
@@ -183,7 +186,15 @@ class BaseEndpoint:
         self._raw_route = route
         self._compiled_route = parse_route(route)
 
+    @property
+    def route(self):
+        return self._compiled_route
+
     async def __call__(self, request: HTTPRequest):
+        if self.methods is not None and request.method not in self.methods:
+            print(self.methods, request.method)
+            return TextResponse("Method Not Allowed", status=405)
+
         try:
             request.args = dict(map(
                 _convert,
@@ -198,9 +209,6 @@ class BaseEndpoint:
                 return e
             raise e
 
-    @property
-    def route(self):
-        return self._compiled_route
 
 
 class HTTPEndpoint(BaseEndpoint):
@@ -211,6 +219,7 @@ class HTTPEndpoint(BaseEndpoint):
         before_invoke: t.Optional[t.Callable] = None,
         on_error: t.Optional[t.Callable] = None,
         converter_cache: t.Callable = None,
+        methods: t.Optional[tuple] = None,
         **_options
     ):
         """
@@ -248,6 +257,10 @@ class HTTPEndpoint(BaseEndpoint):
                 this can be used to save time when processing
                 expensive but repetitive inputs or converter operations.
 
+            methods:
+                A optional tuple of allowed methods for this endpoint.
+                This defaults to None which allows any methods.
+
             **options:
                 Any other options you wish to be sent to the route add
                 function on the framework WebApplication instance.
@@ -259,6 +272,7 @@ class HTTPEndpoint(BaseEndpoint):
             before_invoke,
             on_error,
             converter_cache,
+            methods,
         )
 
     def __repr__(self):
@@ -441,7 +455,11 @@ class HTTPWrapper:
         return func
 
 
-def endpoint(route: str, **kwargs):
+def endpoint(
+    route: str,
+    methods=None,
+    **kwargs,
+):
     """
     A standard HTTP endpoint.
 
@@ -455,6 +473,9 @@ def endpoint(route: str, **kwargs):
             special converter references and named variables to be passed
             as function arguments.
 
+        methods:
+            The allowed set of HTTP methods to be valid for this endpoint.
+
         **kwargs:
             Any optional parameters to be given to the endpoint and router
             itself.
@@ -463,7 +484,7 @@ def endpoint(route: str, **kwargs):
         A HTTPWRapper instance wrapping the given callable.
     """
     def endpoint_wrapper(func):
-        return HTTPWrapper(route, func, **kwargs)
+        return HTTPWrapper(route, func, methods=methods, **kwargs)
 
     endpoint_wrapper.__doc__ = endpoint.__doc__
 

@@ -138,6 +138,7 @@ class HTTPRequest(BaseRequest):
     def __init__(
         self,
         route: str,
+        method: str,
         parameters: str,
         url_args: dict,
         cookies: Cookies,
@@ -150,6 +151,7 @@ class HTTPRequest(BaseRequest):
         self.args = url_args
         self._cookies = cookies
         self._session = session
+        self._method = method
 
         super().__init__(route, parameters, headers, receive, server, client)
 
@@ -162,6 +164,11 @@ class HTTPRequest(BaseRequest):
     def session(self) -> Session:
         """ The request session """
         return self._session
+
+    @property
+    def method(self) -> str:
+        """ The request method """
+        return self._method
 
     async def _read_all(self) -> bytes:
         buffer = b""

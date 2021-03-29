@@ -91,6 +91,7 @@ class App:
             send,
             cb,
             path,
+            scope['method'],
             query,
             args,
             headers,
@@ -184,6 +185,7 @@ class App:
             send_wrapper,
             cb,
             path,
+            scope['method'],
             query,
             args,
             headers,
@@ -197,6 +199,7 @@ class App:
         send: Any,
         ep: HTTPEndpoint,
         path: str,
+        method: str,
         query: str,
         args: dict,
         headers: List[tuple],
@@ -209,6 +212,7 @@ class App:
 
         request = HTTPRequest(
             route=path,
+            method=method,
             parameters=query,
             url_args=args,
             cookies=cookies,

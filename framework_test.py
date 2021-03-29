@@ -18,21 +18,33 @@ class Test(Blueprint):
     def __init__(self):
         ...
 
-    @endpoint("/hello/{foo:string}")
-    async def foo(self, _, foo):
-        return responses.TextResponse(f"hello, {foo}!")
+    @endpoint("/404")
+    async def t6(self, _):
+        return responses.TextResponse("hello")
 
-    @foo.error
-    async def foo_error(self, req, err):
-        ...
+    @endpoint("/200")
+    async def t1(self, _):
+        return responses.TextResponse("hello")
 
-    @foo.before_invoke
-    async def foo_middleware(self, req):
-        ...
+    @endpoint("/numbers/{foo:int}")
+    async def t2(self, _, foo):
+        return responses.TextResponse(f"hello number {foo}")
 
-    @endpoint("/hello/{foo:string}")
-    async def bar(self, req):
-        print("wew")
+    @endpoint("/get", methods=["GET"])
+    async def t3(self, _):
+        return responses.TextResponse("hello")
+
+    @endpoint("/post", methods=["POST"])
+    async def t4(self, _):
+        return responses.TextResponse("hello")
+
+    @endpoint("/put", methods=["PUT"])
+    async def t5(self, _):
+        return responses.TextResponse("hello")
+
+    @endpoint("/delete", methods=["DELETE"])
+    async def t7(self, _):
+        return responses.TextResponse("hello")
 
 
 if __name__ == '__main__':
