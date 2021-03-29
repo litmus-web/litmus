@@ -35,7 +35,7 @@ class BaseRequest:
     def __init__(
         self,
         route: str,
-        parameters: bytes,
+        parameters: str,
         headers: t.List[t.Tuple[str, bytes]],
         receive: t.Callable,
         server: t.Tuple[str, int],
@@ -138,7 +138,7 @@ class HTTPRequest(BaseRequest):
     def __init__(
         self,
         route: str,
-        parameters: bytes,
+        parameters: str,
         url_args: dict,
         cookies: Cookies,
         session: Session,

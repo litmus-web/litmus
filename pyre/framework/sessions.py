@@ -18,10 +18,11 @@ if IS_PRODUCTION and SECURE_KEY is None:
 elif SECURE_KEY is None:
     SECURE_KEY = "pyre-development"
 
+_SERIALIZER = URLSafeSerializer(SECURE_KEY)
+
 
 class Session(dict):
-    def __init__(self, cookies: Cookies, serializer: URLSafeSerializer):
-        self._serializer = serializer
+    def __init__(self, cookies: Cookies):
         self._should_update = False
 
         values = cookies.get('session')
@@ -29,7 +30,7 @@ class Session(dict):
             super().__init__()
             return
 
-        values = serializer.loads(values)
+        values = _SERIALIZER.loads(values)
         super().__init__(**values)
 
     def __setitem__(self, key, value):
@@ -40,6 +41,6 @@ class Session(dict):
         if not self._should_update:
             return
 
-        values = self._serializer.dumps(self)
+        values = _SERIALIZER.dumps(self)
         cookies['session'] = values
 

@@ -30,7 +30,7 @@ class Parameters(FrozenCollection):
     """
 
     @classmethod
-    def from_raw(cls, data: bytes) -> "Parameters":
+    def from_raw(cls, data: str) -> "Parameters":
         """
         Creates a new instance of this class from a given raw string.
 
@@ -44,9 +44,9 @@ class Parameters(FrozenCollection):
         """
 
         parts = {}
-        pairs = data.split(b"&")
+        pairs = data.split("&")
         for pair in pairs:
-            key, value = pair.split(b"=", maxsplit=1)
+            key, value = pair.split("=", maxsplit=1)
             parts[key] = value
 
         return cls(
@@ -77,7 +77,7 @@ class Parameters(FrozenCollection):
         return maybe_value.decode()
 
     def __getitem__(self, item) -> str:
-        return self._all[item].decode()
+        return self._all[item]
 
 
 class Headers(FrozenCollection):

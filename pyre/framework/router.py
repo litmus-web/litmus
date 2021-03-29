@@ -166,6 +166,7 @@ class BaseEndpoint:
         on_error: t.Optional[t.Callable],
         converter_cache: t.Callable,
     ):
+        self.id = -1
         self.callback_name = callback.__name__
         self.callback = callback
         self.before_invoke = before_invoke
