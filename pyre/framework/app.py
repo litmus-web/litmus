@@ -230,7 +230,3 @@ class App:
         p1, p2 = response.to_raw(extra_headers=headers)
         await send(p1)
         await send(p2)
-
-
-
-
