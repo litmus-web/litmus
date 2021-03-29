@@ -11,35 +11,6 @@ except ImportError:
     asyncio.set_event_loop(loop)
 
 
-"""async def suprise(
-    scope,
-    send,
-    receive,
-):
-    # print(pprint(scope))
-    try:
-        body = receive()
-        # print(body)
-    except BlockingIOError:
-        fut = asyncio.get_event_loop().create_future()
-        receive.subscribe(fut.set_result)
-        # print("waiting")
-        # print(await fut)
-
-    send.send_start(
-        200,
-        (
-            (b"Content-Length", b"13"),
-            (b"Content-Type", b"text/plain"),
-        )
-    )
-
-    send.send_body(
-        False,
-        b"Hello, World!"
-    )"""
-
-
 app = App()
 
 
