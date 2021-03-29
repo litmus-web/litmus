@@ -1,3 +1,5 @@
+import asyncio
+
 from typing import Optional, List, Tuple, Any
 
 from .. import RouterMatcher
@@ -13,8 +15,11 @@ def _convert_header(data: Tuple[bytes, bytes]) -> Tuple[str, bytes]:
     return data[0].decode('ascii'), data[1]
 
 
-async def app(scope, receive, send):
-    print("wew")
+async def _not_found(send):
+    resp = TextResponse("Not Found", status=404)
+    p1, p2 = resp.to_raw()
+    await send(p1)
+    await send(p2)
 
 
 class App:
@@ -22,8 +27,17 @@ class App:
         self._endpoints: List[HTTPEndpoint] = []
         self._blueprints: List[Blueprint] = []
         self._matcher = RouterMatcher([])  # re-made later
+        self._loop = asyncio.get_event_loop()
 
     def add_blueprint(self, inst: Blueprint):
+        """
+        Adds a class instance that inherits from the `framework.Blueprint`
+        class, this initiated route methods and adds them to the app.
+
+        Args:
+            inst:
+                A instance of a framework.Blueprint subclass.
+        """
         apply_methods(inst)
 
         next_id = len(self._blueprints)
@@ -39,9 +53,20 @@ class App:
         self._matcher = RouterMatcher(to_compile)
 
     async def __call__(self, scope, receive, send):
-        await self.asgi_app(scope, receive, send)
+        """
+        The callable for a ASGI server to invoke.
 
-    async def asgi_app(self, scope, receive, send):
+        Args:
+            scope:
+                The ASGI scope.
+
+            receive:
+                The ASGI receiver callback.
+
+            send:
+                The ASGI sender callback.
+        """
+
         if scope['asgi'].get("type"):
             return
 
@@ -52,10 +77,7 @@ class App:
         ]] = self._matcher.get_callback(path)
 
         if maybe_cb is None:
-            resp = TextResponse("Not Found", status=404)
-            p1, p2 = resp.to_raw()
-            await send(p1)
-            await send(p2)
+            await _not_found(scope)
             return
 
         cb, args = maybe_cb
@@ -78,7 +100,97 @@ class App:
         )
 
     async def psgi_app(self, scope, send, receive):
-        ...
+        """
+        The PSGI (Pyre Server Gateway Interface) callback handler used
+        to interact with the framework.
+
+        Args:
+            scope:
+                The PSGI scope.
+            send:
+                The raw PSGI sender callback that needs to be wrapped.
+
+            receive:
+                The raw PSGI receiver callback that needs to be wrapped.
+        """
+        path = scope['path']
+        maybe_cb: Optional[Tuple[
+            HTTPEndpoint,
+            list,
+        ]] = self._matcher.get_callback(path)
+
+        async def send_wrapper(result: dict):
+            type_ = result['type']
+            if type_ == "http.response.start":
+                try:
+                    send.send_start(
+                        result['status'],
+                        result['headers'],
+                    )
+                except BlockingIOError:  # should never happen on start.
+                    fut = self._loop.create_future()
+                    send.subscribe(fut.set_result)
+                    await fut
+
+                    send.send_start(
+                        result['status'],
+                        result['headers'],
+                    )
+                return
+
+            elif type_ == "http.response.body":
+                try:
+                    send.send_body(
+                        result.get('more_body', False),
+                        result['body'],
+                    )
+                except BlockingIOError:
+                    fut = self._loop.create_future()
+                    send.subscribe(fut.set_result)
+                    await fut
+
+                    send.send_body(
+                        result.get('more_body', False),
+                        result['body'],
+                    )
+                return
+
+            raise TypeError("invalid send type given")
+
+        async def receive_wrapper() -> dict:
+            try:
+                more_body, data = receive()
+            except BlockingIOError:
+                fut = self._loop.create_future()
+                receive.subscribe(fut.set_result)
+                more_body, data = await fut
+
+            return {
+                'more_body': more_body,
+                'data': data,
+            }
+
+        if maybe_cb is None:
+            await _not_found(send_wrapper)
+            return
+
+        cb, args = maybe_cb
+        args = dict(args)
+
+        query = scope['query']
+        headers = scope['headers']
+
+        await self.invoke(
+            send_wrapper,
+            cb,
+            path,
+            query,
+            args,
+            headers,
+            receive_wrapper,
+            scope.get('client'),
+            scope.get('server'),
+        )
 
     async def invoke(
         self,
