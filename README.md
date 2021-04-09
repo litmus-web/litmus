@@ -24,10 +24,12 @@ The main server api has been implemented other than the direct protocols, these 
 
 ### Latency
 ![image](https://user-images.githubusercontent.com/57491488/112849025-92621280-90a0-11eb-96a2-f69aa3618252.png)
+
 (red line) Pyre, (blue line) Uvicorn.
 
 ### Throughput
 ![image](https://user-images.githubusercontent.com/57491488/112848941-81b19c80-90a0-11eb-9017-91c44570a39c.png)
+
 (red line) Pyre, (blue line) Uvicorn.
 
 
