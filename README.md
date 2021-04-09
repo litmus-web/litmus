@@ -22,14 +22,12 @@ The main server api has been implemented other than the direct protocols, these 
 ### Benchmarks
 
 
-### Reduction of Latency
+### Latency
 ![image](https://user-images.githubusercontent.com/57491488/112849025-92621280-90a0-11eb-96a2-f69aa3618252.png)
+(read line) Pyre, (blue line) Uvicorn.
 
-As you can see in the above imade with Uvicorn(blue) and Pyre(red) I achieve an average reduction of latency by around 50% which is over my 40% goal.
-
-### Increase Throughput
+### Throughput
 ![image](https://user-images.githubusercontent.com/57491488/112848941-81b19c80-90a0-11eb-9017-91c44570a39c.png)
-
-In the above image like my latency reduction pyre (red) is around 50% higher throughput than uvicorn (blue) which is again higher than my original 40% goal.
+(read line) Pyre, (blue line) Uvicorn.
 
 
