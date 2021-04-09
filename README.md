@@ -21,9 +21,15 @@ The main server api has been implemented other than the direct protocols, these 
 
 ### Benchmarks
 
-#### Pre-Alpha Benchmarks
-**Note these benchmarks were taken back in the pre-aplha builds before the most recent set of refractors**
 
-These benchmarks were taken while testing the pre-alpha without HTTP/1 Pipelining as neither servers support concurrent pipelining using `wrk`, the comparision was Pyre VS Uvicorn which is the current go to performance server.
+### Reduction of Latency
+![image](https://user-images.githubusercontent.com/57491488/112849025-92621280-90a0-11eb-96a2-f69aa3618252.png)
 
-![alt text](https://github.com/Project-Dream-Weaver/Pyre/blob/main/images/bench-pre-alpha.png "Pyre Benchmarks")
+As you can see in the above imade with Uvicorn(blue) and Pyre(red) I achieve an average reduction of latency by around 50% which is over my 40% goal.
+
+### Increase Throughput
+![image](https://user-images.githubusercontent.com/57491488/112848941-81b19c80-90a0-11eb-9017-91c44570a39c.png)
+
+In the above image like my latency reduction pyre (red) is around 50% higher throughput than uvicorn (blue) which is again higher than my original 40% goal.
+
+
