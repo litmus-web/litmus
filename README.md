@@ -17,7 +17,7 @@ The framework side of Pyre is designed to add a more OOP and event driven framew
 Pyre aims to provide a HTTP/1, HTTP/2 and Websocket complient protocol written from scratch and in native level code granting greater security while giving greater performance on both Windows and Unix systems.
 
 ### Current state of Pyre:
-The main server api has been implemented other than the direct protocols, these will become the `H1`, `H2` and `WS` protocol sections, this may seem like alot to do and it is however alot of the code base is re-implementing / re-creating the asyncio streams api to be more rust friendly and high performance.
+The main server api has been implemented other than the H2 and WS protocols, these will become the `H2` and `WS` protocol sections.
 
 ### Benchmarks
 
