@@ -1,8 +1,8 @@
 import asyncio
-from typing import Callable
+from typing import List
 from functools import partial
 
-from .. import _Server, create_server
+from . import _Server, create_server
 
 
 class FileDescriptorPartial:
@@ -37,34 +37,34 @@ class FileDescriptorPartial:
 
 class Server:
     def __init__(
-            self,
-            app: Callable,
-            host: str = "127.0.0.1",
-            port: int = 8080,
-            *,
-            debug: bool = False,
-            backlog: int = 1024,
-            keep_alive: int = 5,
-            loop: asyncio.AbstractEventLoop = None
+        self,
+        app_callback,
+        listen_on: List[str] = None,
+        backlog: int = 1024,
+        keep_alive: int = 5,
+        gc_interval: int = 60,
+        keep_alive_interval: int = 1,
     ):
-        self.app = app
-        self.host = host
-        self.port = port
-        self.debug = debug
-        self.backlog = backlog
-        self.keep_alive = keep_alive
-        self.loop = loop or asyncio.get_event_loop()
+        if listen_on is None:
+            listen_on = ["127.0.0.1:8080"]
+
+        self.app = app_callback
+        self.loop = asyncio.get_running_loop()
+        self.gc_interval = gc_interval
+        self.keep_alive_interval = keep_alive_interval
+
+        if isinstance(self.loop, asyncio.ProactorEventLoop):
+            raise TypeError("the asyncio.ProactorEventLoop event loop is not supported")
 
         self._waiter = self.loop.create_future()
+        self._shutdown = False
 
-        self._server: _Server = create_server(
-            self.host,
-            self.port,
+        self._server = create_server(
             self.__app,
-            self.backlog,
-            self.keep_alive,
+            listen_on,
+            backlog,
+            keep_alive,
         )
-
         self._server.init(
             self._add_reader,
             self._remove_reader,
@@ -72,15 +72,26 @@ class Server:
             self._remove_writer,
             self._close_socket,
         )
+        self._kai_task = self.loop.call_later(self.keep_alive_interval, self._poll_keep_alive)
+        self._gci_task = self.loop.call_later(self.gc_interval, self._activate_gc)
 
-    def shutdown(self):
-        self._server.shutdown()
-        self._waiter.set_result(None)
+    def _activate_gc(self):
+        self._server.purge_clients()
 
-    def start(self):
-        self._server.start(self.loop.add_reader, self._server.poll_accept)
-        self.loop.create_task(self.keep_alive_ticker())
-        self._server.poll_accept()
+        if not self._shutdown:
+            self.loop.call_later(
+                self.gc_interval,
+                self._activate_gc,
+            )
+
+    def _poll_keep_alive(self):
+        self._server.poll_keep_alive()
+
+        if not self._shutdown:
+            self.loop.call_later(
+                self.keep_alive_interval,
+                self._poll_keep_alive,
+            )
 
     def __app(self, scope, send, receive):
         scope = {
@@ -97,19 +108,6 @@ class Server:
         }
 
         self.loop.create_task(self.app(scope, send, receive))
-
-    async def run_forever(self):
-        await self._waiter
-
-    async def keep_alive_ticker(self):
-        while not self._waiter.done():
-            if self.debug:
-                print("Active Clients: ", self._server.len_clients())
-            try:
-                self._server.poll_keep_alive()
-            except Exception as e:
-                print("Unhandled keep alive exception: {}".format(e))
-            await asyncio.sleep(self.keep_alive)
 
     @property
     def _add_reader(self):
@@ -136,3 +134,19 @@ class Server:
     @property
     def _close_socket(self):
         return partial(self.loop.call_soon, self._server.poll_close)
+
+    def _register_listener(self, fd: int, index: int):
+        self.loop.add_reader(fd, self._server.poll_accept, index)
+
+    def ignite(self):
+        self._server.ignite(self._register_listener)
+
+    def shutdown(self):
+        self._server.shutdown()
+        self._shutdown = True
+        self._gci_task.cancel()
+        self._kai_task.cancel()
+        self._waiter.set_result(None)
+
+    async def run_forever(self):
+        await self._waiter

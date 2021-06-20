@@ -1,24 +1,24 @@
-from asyncio import get_event_loop
+from asyncio import get_running_loop
 
 
-class PSGIToASGIAdapter:
+class LSGIToASGIAdapter:
     def __init__(self, app):
-        self._loop = get_event_loop()
+        self._loop = get_running_loop()
         self._app = app
 
     async def __call__(self, scope, send, receive):
         """
-        The PSGI (Litmus Server Gateway Interface) callback handler used
+        The LSGI (Litmus Server Gateway Interface) callback handler used
         to interact with the framework.
 
         Args:
             scope:
-                The PSGI scope.
+                The LSGI scope.
             send:
-                The raw PSGI sender callback that needs to be wrapped.
+                The raw LSGI sender callback that needs to be wrapped.
 
             receive:
-                The raw PSGI receiver callback that needs to be wrapped.
+                The raw LSGI receiver callback that needs to be wrapped.
         """
 
         scope['query_string'] = scope['query'].encode()
