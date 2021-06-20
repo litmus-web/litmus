@@ -16,7 +16,6 @@ branch = "main"
 features = ["extension-module"]
 
 [dependencies]
-litmus-framework = { version = "*", path = "litmus-framework" }
 litmus-server = { version = "*", path = "litmus-server" }
 pretty_env_logger = "0.4.0"
 timed = "0.2.1"

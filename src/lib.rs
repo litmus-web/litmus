@@ -14,7 +14,6 @@ use jemallocator::Jemalloc;
 #[global_allocator]
 static GLOBAL: Jemalloc = Jemalloc;
 
-use litmus_framework::RouterMatcher;
 use litmus_server::responders::{DataReceiver, DataSender};
 use litmus_server::server::Server;
 use litmus_server::settings::ServerSettings;
@@ -65,6 +64,5 @@ fn litmus(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<Server>()?;
     m.add_class::<DataSender>()?;
     m.add_class::<DataReceiver>()?;
-    m.add_class::<RouterMatcher>()?;
     Ok(())
 }
