@@ -1,0 +1,20 @@
+version: '3'
+
+services:
+  litmus:
+    container_name: litmus
+    build: ./litmus_test
+    ports:
+      - "8080:8080"
+  uvicorn:
+    container_name: uvicorn
+    build: ./uvicorn_test
+    ports:
+      - "5000:5000"
+  loader:
+    container_name: autocannon
+    image: skandyla/wrk
+    command: --threads 8 --connections 1024 --duration 30s http://litmus:8080/docs
+    depends_on:
+      - litmus
+      - uvicorn

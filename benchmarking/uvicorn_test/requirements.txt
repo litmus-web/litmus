@@ -1,0 +1,4 @@
+fastapi
+uvloop
+uvicorn
+httptools

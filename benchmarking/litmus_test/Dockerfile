@@ -7,9 +7,6 @@ WORKDIR /temp
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 ENV PATH="/root/.cargo/bin:${PATH}"
 
-RUN apt update
-RUN apt install cmake -y
-
 RUN mkdir /code
 WORKDIR /code
 RUN git clone https://github.com/Project-Dream-Weaver/litmus.git
@@ -21,5 +18,6 @@ RUN . /opt/venv/bin/activate && pip install -r requirements.txt
 RUN . /opt/venv/bin/activate && maturin develop --release
 
 COPY ./test.py ./test.py
+
 
 CMD . /opt/venv/bin/activate && exec python test.py
