@@ -178,12 +178,10 @@ impl Server {
         self.manager().poll_close(index)
     }
 
-    #[timed::timed(duration(printer = "trace!"))]
     fn poll_keep_alive(&mut self) -> PyResult<()> {
         self.manager().poll_keep_alive()
     }
 
-    #[timed::timed(duration(printer = "trace!"))]
     fn shutdown(&mut self) -> PyResult<()> {
         self.manager().shutdown()
     }

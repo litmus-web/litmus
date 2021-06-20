@@ -144,7 +144,6 @@ impl<C: Reusable + PollHandler> RawPollHandler for ClientManager<C> {
                     remove.push(id);
                 };
             }
-            client.poll_keep_alive()?;
         }
 
         for id in remove {

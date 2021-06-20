@@ -18,8 +18,6 @@ features = ["extension-module"]
 [dependencies]
 litmus-server = { version = "*", path = "litmus-server" }
 pretty_env_logger = "0.4.0"
-timed = "0.2.1"
-once_cell = "1"
 
 [target.'cfg(not(target_env = "msvc"))'.dependencies]
 jemallocator = { version="^0.3.2", features = ["disable_initial_exec_tls", "background_threads"] }

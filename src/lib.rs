@@ -3,7 +3,6 @@ extern crate pretty_env_logger;
 use pyo3::prelude::*;
 use pyo3::wrap_pyfunction;
 
-use once_cell::sync::OnceCell;
 use std::env;
 use std::time::Duration;
 
@@ -18,7 +17,6 @@ use litmus_server::responders::{DataReceiver, DataSender};
 use litmus_server::server::Server;
 use litmus_server::settings::ServerSettings;
 
-static TRACER: OnceCell<timed::Trace> = OnceCell::new();
 
 #[pyfunction]
 pub fn set_log_level(log_level: &str) {
@@ -27,16 +25,9 @@ pub fn set_log_level(log_level: &str) {
 
 #[pyfunction]
 pub fn init_logger() {
-    let trace = timed::Trace::new("litmus init");
-    let _ = TRACER.set(trace);
     pretty_env_logger::init();
 }
 
-#[pyfunction]
-pub fn statistics() -> String {
-    let trace = TRACER.get().expect("tracing not initialised");
-    trace.statistics()
-}
 
 #[pyfunction]
 pub fn create_server(
@@ -60,7 +51,6 @@ fn litmus(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(create_server, m)?)?;
     m.add_function(wrap_pyfunction!(set_log_level, m)?)?;
     m.add_function(wrap_pyfunction!(init_logger, m)?)?;
-    m.add_function(wrap_pyfunction!(statistics, m)?)?;
     m.add_class::<Server>()?;
     m.add_class::<DataSender>()?;
     m.add_class::<DataReceiver>()?;
