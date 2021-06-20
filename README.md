@@ -1,6 +1,4 @@
 [![CodeFactor](https://www.codefactor.io/repository/github/project-dream-weaver/litmus/badge)](https://www.codefactor.io/repository/github/project-dream-weaver/litmus)
-[![Rust Report Card](https://rust-reportcard.xuri.me/badge/github.com/Project-Dream-Weaver/Litmus)](https://rust-reportcard.xuri.me/report/github.com/Project-Dream-Weaver/Litmus)
-
 # Litmus
 **NOTE: THIS IS NOT PRODUCTION READY AS OF YET**
 A fast asyncronous HTTP server and framework written in Rust for Python.
