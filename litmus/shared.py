@@ -53,7 +53,7 @@ class Server:
         self.gc_interval = gc_interval
         self.keep_alive_interval = keep_alive_interval
 
-        if isinstance(self.loop, asyncio.ProactorEventLoop):
+        if hasattr(asyncio, "ProactorEventLoop") and isinstance(self.loop, asyncio.ProactorEventLoop):
             raise TypeError("the asyncio.ProactorEventLoop event loop is not supported")
 
         self._waiter = self.loop.create_future()
