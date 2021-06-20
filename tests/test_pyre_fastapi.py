@@ -1,5 +1,7 @@
 import asyncio
 
+
+from litmus.server.adapters import PSGIToASGIAdapter
 from litmus.server import Server
 
 try:
@@ -12,27 +14,28 @@ except ImportError:
 
 async def suprise(
     scope,
-    send,
     receive,
+    send,
 ):
-    send.send_start(
-        200,
-        (
+    await send({
+        "type": "http.response.start",
+        "status": 200,
+        "headers": (
             (b"Content-Length", b"13"),
             (b"Content-Type", b"text/plain"),
-        )
-    )
+        ),
+    })
 
-    send.send_body(
-        False,
-        b"Hello, World!"
-    )
+    await send({
+        "type": "http.response.body",
+        "more_body": False,
+        "body": b"Hello, World!"
+    })
 
 
 async def main():
-    print("Running @ http://127.0.0.1:8080")
-
-    server = Server(suprise, host="0.0.0.0", port=8080)
+    wrapped = PSGIToASGIAdapter(suprise)
+    server = Server(wrapped, host="0.0.0.0", port=8080)
     server.start()
     try:
         await server.run_forever()

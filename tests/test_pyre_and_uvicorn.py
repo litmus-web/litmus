@@ -1,5 +1,5 @@
 """
-This is an example benchmarking test using python to benchmark Pyre one of
+This is an example benchmarking test using python to benchmark Litmus one of
 my pet projects.
 
 This measures the latency and throughput and displays them with matplotlib.
@@ -18,11 +18,11 @@ def start_benchmark(
     time: str = "10s",
     rounds: int = 3,
 ) -> list:
-    command = f"/home/chillfish8/Documents/rewrk/target/release/rewrk " \
+    command = f"rewrk " \
               f"-h {host} " \
               f"-c {connections} " \
               f"-d {time} " \
-              f"-t 4 " \
+              f"-t 12 " \
               f"--rounds {rounds} " \
               f"--json"
     process = Popen(command, shell=True, stdout=PIPE, stderr=PIPE)
@@ -37,14 +37,14 @@ def get_avg(inputs: list) -> float:
 
 
 def make_runs():
-    host = "http://127.0.0.1:8000/hello"
+    host = "http://127.0.0.1:8000/hello/bob"
 
     x_index = []
     latencies1 = []
     latencies2 = []
     req_secs1 = []
     req_secs2 = []
-    for conns in [60, 128, 256, 512]:
+    for conns in [60, 128, 256, 500]:
         results = start_benchmark(host, conns, time="15s", rounds=3)
         avg_latency = get_avg([o['latency_avg'] for o in results])
         avg_req_sec = get_avg([o['requests_avg'] for o in results])
@@ -53,8 +53,8 @@ def make_runs():
         latencies1.append(avg_latency)
         req_secs1.append(avg_req_sec)
 
-    host = "http://127.0.0.1:8080/hello"
-    for conns in [60, 128, 256, 512]:
+    host = "http://127.0.0.1:8080/hello/bob"
+    for conns in [60, 128, 256, 500]:
         results = start_benchmark(host, conns, time="15s", rounds=3)
         avg_latency = get_avg([o['latency_avg'] for o in results])
         avg_req_sec = get_avg([o['requests_avg'] for o in results])
@@ -69,7 +69,7 @@ def make_runs():
     plt.plot(x_index, latencies1)
     plt.plot(x_index, latencies2, color="red")
     plt.ylim((0, 200))
-    plt.savefig("./results/pyre_framework_latencies.png")
+    plt.savefig("./pyre_framework_latencies.png")
     plt.close()
 
     plt.figure()
@@ -79,7 +79,7 @@ def make_runs():
     plt.plot(x_index, req_secs1)
     plt.plot(x_index, req_secs2, color="red")
     plt.ylim((0, 30_000))
-    plt.savefig("./results/pyre_framework_requests.png")
+    plt.savefig("./pyre_framework_requests.png")
 
 
 if __name__ == '__main__':

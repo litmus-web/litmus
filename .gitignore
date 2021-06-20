@@ -7,3 +7,4 @@ test.py
 h11 test.py
 uvicorn_test.py
 *.pyc
+/rewrk.exe

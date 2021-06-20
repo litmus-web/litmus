@@ -1,5 +1,5 @@
-from pyre import framework
-from pyre.framework import App, Headers, responses
+from litmus import framework
+from litmus.framework import App, Headers, responses
 
 
 class MyEndpoint(framework.Blueprint):

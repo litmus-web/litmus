@@ -1,5 +1,5 @@
 """
-This is an example benchmarking test using python to benchmark Pyre one of
+This is an example benchmarking test using python to benchmark Litmus one of
 my pet projects.
 
 This measures the latency and throughput and displays them with matplotlib.

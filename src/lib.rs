@@ -1,73 +1,67 @@
-use std::net::SocketAddr;
+extern crate pretty_env_logger;
+
+use pyo3::prelude::*;
+use pyo3::wrap_pyfunction;
+
+use once_cell::sync::OnceCell;
+use std::env;
 use std::time::Duration;
 
 #[cfg(not(target_env = "msvc"))]
 use jemallocator::Jemalloc;
-use pyo3::prelude::*;
-use pyo3::wrap_pyfunction;
-
-use pyre_server::net::listener::NoneBlockingListener;
-use pyre_server::py_callback::CallbackHandler;
-use pyre_server::responders::receiver::DataReceiver;
-use pyre_server::responders::sender::DataSender;
-use pyre_server::server::Server;
-use pyre_server::settings::Settings;
-
-use pyre_framework::RouterMatcher;
 
 #[cfg(not(target_env = "msvc"))]
 #[global_allocator]
 static GLOBAL: Jemalloc = Jemalloc;
 
+use litmus_framework::RouterMatcher;
+use litmus_server::responders::{DataReceiver, DataSender};
+use litmus_server::server::Server;
+use litmus_server::settings::ServerSettings;
 
-/// Creates a client handler instance linked to a TcpListener and event loop.
-///
-/// Args:
-///     host:
-///         The given host string to bind to e.g. '127.0.0.1'.
-///     port:
-///         The given port to bind to e.g. 6060.
-///     backlog:
-///         The max amount of iterations to do when accepting clients
-///         when the socket is ready and has been invoked.
-///
-/// Returns:
-///     A un-initialised HandleClients instance linked to the main listener.
+static TRACER: OnceCell<timed::Trace> = OnceCell::new();
+
 #[pyfunction]
-fn create_server(
-    host: &str,
-    port: u16,
+pub fn set_log_level(log_level: &str) {
+    let _ = env::set_var("RUST_LOG", log_level);
+}
+
+#[pyfunction]
+pub fn init_logger() {
+    let trace = timed::Trace::new("litmus init");
+    let _ = TRACER.set(trace);
+    pretty_env_logger::init();
+}
+
+#[pyfunction]
+pub fn statistics() -> String {
+    let trace = TRACER.get().expect("tracing not initialised");
+    trace.statistics()
+}
+
+#[pyfunction]
+pub fn create_server(
     callback: PyObject,
+    binders: Vec<&str>,
     backlog: usize,
     keep_alive: u64,
 ) -> PyResult<Server> {
-    let binder = format!("{}:{}", host, port);
-
-    let socket_addr: SocketAddr = binder.clone().parse().unwrap();
-    let settings = Settings::new(false, socket_addr);
-    let listener = NoneBlockingListener::bind(&binder)?;
-    let callback = CallbackHandler::new(callback);
-
-    let keep_alive = Duration::from_secs(keep_alive);
-
-    let new_handler = Server::new(
-        settings,
+    let settings = ServerSettings {
         backlog,
-        listener,
-        callback,
-        keep_alive,
-    );
+        keep_alive: Duration::from_secs(keep_alive),
+    };
 
-    Ok(new_handler)
+    let server = Server::connect(settings, callback, binders)?;
+
+    Ok(server)
 }
 
-
-///
-/// Wraps all our existing pyobjects together in the module
-///
 #[pymodule]
-fn pyre(_py: Python, m: &PyModule) -> PyResult<()> {
+fn litmus(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(create_server, m)?)?;
+    m.add_function(wrap_pyfunction!(set_log_level, m)?)?;
+    m.add_function(wrap_pyfunction!(init_logger, m)?)?;
+    m.add_function(wrap_pyfunction!(statistics, m)?)?;
     m.add_class::<Server>()?;
     m.add_class::<DataSender>()?;
     m.add_class::<DataReceiver>()?;
