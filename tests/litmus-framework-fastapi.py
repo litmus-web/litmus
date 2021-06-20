@@ -2,7 +2,7 @@ import asyncio
 import litmus
 
 from fastapi import FastAPI
-litmus.set_log_level("debug")
+litmus.set_log_level("info")
 litmus.init_logger()
 
 asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
