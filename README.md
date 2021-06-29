@@ -13,11 +13,3 @@ Litmus aims to provide a HTTP/1, HTTP/2 and Websocket complient protocol written
 
 ### Current state of Litmus:
 The main server api has been implemented other than the `H2` and `WS` protocol sections.
-
-### Benchmarks
-
-#### Windows Benchmarks
-This is a small test on windows comparing per-worker performance of uvicorn vs litmus using a basic fastapi app and serving the documentation page.
-
-![windows-compo1](https://user-images.githubusercontent.com/57491488/122682851-bb9fc400-d1f3-11eb-8a06-7998b0259db6.png)
-
