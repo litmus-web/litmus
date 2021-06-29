@@ -13,9 +13,9 @@ use jemallocator::Jemalloc;
 #[global_allocator]
 static GLOBAL: Jemalloc = Jemalloc;
 
-use litmus_server::responders::{DataReceiver, DataSender};
-use litmus_server::server::Server;
-use litmus_server::settings::ServerSettings;
+use pyre_server::responders::{DataReceiver, DataSender};
+use pyre_server::server::Server;
+use pyre_server::settings::ServerSettings;
 
 
 #[pyfunction]
@@ -47,7 +47,7 @@ pub fn create_server(
 }
 
 #[pymodule]
-fn litmus(_py: Python, m: &PyModule) -> PyResult<()> {
+fn pyre_http(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(create_server, m)?)?;
     m.add_function(wrap_pyfunction!(set_log_level, m)?)?;
     m.add_function(wrap_pyfunction!(init_logger, m)?)?;

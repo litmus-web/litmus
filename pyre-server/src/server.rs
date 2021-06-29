@@ -87,7 +87,7 @@ impl Server {
 
 #[pymethods]
 impl Server {
-    /// Run litmus
+    /// Run pyre
     fn ignite(&mut self, py: Python, accept_callback: PyObject) -> PyResult<()> {
         let start = std::time::Instant::now();
         for (index, listener) in self.listeners.iter().enumerate() {
@@ -100,7 +100,7 @@ impl Server {
         }
 
         info!(
-            "litmus ignited! All listeners registered in {:?}",
+            "pyre ignited! All listeners registered in {:?}",
             start.elapsed()
         );
 

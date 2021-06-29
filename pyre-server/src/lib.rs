@@ -3,7 +3,7 @@ extern crate log;
 
 mod client;
 mod event_loop;
-mod lsgi;
+mod psgi;
 mod manager;
 mod net;
 mod protocols;

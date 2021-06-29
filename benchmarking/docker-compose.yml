@@ -1,8 +1,8 @@
 version: '3'
 
 services:
-  litmus:
-    container_name: litmus
+  pyre:
+    container_name: pyre
     build: ./litmus_test
     ports:
       - "8080:8080"
@@ -14,7 +14,7 @@ services:
   loader:
     container_name: autocannon
     image: skandyla/wrk
-    command: --threads 8 --connections 1024 --duration 30s http://litmus:8080/docs
+    command: --threads 8 --connections 1024 --duration 30s http://pyre:8080/docs
     depends_on:
-      - litmus
+      - pyre
       - uvicorn

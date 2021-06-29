@@ -10,7 +10,7 @@ use super::{SenderPayload, WakerQueue};
 
 const HEADER_SEPARATOR: &[u8] = ": ".as_bytes();
 const LINE_SEPARATOR: &[u8] = "\r\n".as_bytes();
-const SERVER_HEADER: &[u8] = "server: Litmus".as_bytes();
+const SERVER_HEADER: &[u8] = "server: Pyre".as_bytes();
 
 /// The callable class that handling communication back to the server protocol.
 #[pyclass]

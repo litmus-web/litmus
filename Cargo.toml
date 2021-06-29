@@ -1,5 +1,5 @@
 [package]
-name = "litmus"
+name = "pyre-http"
 version = "0.1.0"
 authors = ["Harrison Burt <57491488+ChillFish8@users.noreply.github.com>"]
 edition = "2018"
@@ -7,7 +7,7 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [lib]
-name = "litmus"
+name = "pyre_http"
 crate-type = ["cdylib"]
 
 [dependencies.pyo3]
@@ -16,7 +16,7 @@ branch = "main"
 features = ["extension-module"]
 
 [dependencies]
-litmus-server = { version = "*", path = "litmus-server" }
+pyre-server = { version = "*", path = "pyre-server" }
 pretty_env_logger = "0.4.0"
 
 [target.'cfg(not(target_env = "msvc"))'.dependencies]

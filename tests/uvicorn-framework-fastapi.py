@@ -5,9 +5,9 @@ from fastapi import FastAPI
 app = FastAPI()
 
 
-@app.get("/stats")
+@app.get("/hello")
 async def show_stats():
-    return "litmus.statistics()"
+    return "hello, world"
 
 
 if __name__ == '__main__':

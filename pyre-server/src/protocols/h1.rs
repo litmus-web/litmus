@@ -13,7 +13,7 @@ use http::header::{CONTENT_LENGTH, TRANSFER_ENCODING};
 use http::uri::Uri;
 use httparse::{parse_chunk_size, Header, Request, Status};
 
-use crate::lsgi;
+use crate::psgi;
 use crate::protocols::selector::SwitchStatus;
 use crate::responders::{ReceiverFactory, SenderFactory};
 use crate::server::CallbackHandler;
@@ -279,10 +279,10 @@ impl H1Protocol {
 
         let version = if version == 0 {
             self.keep_alive = false;
-            lsgi::HTTP_10
+            psgi::HTTP_10
         } else if version == 1 {
             self.keep_alive = true;
-            lsgi::HTTP_11
+            psgi::HTTP_11
         } else {
             unreachable!()
         };
@@ -304,21 +304,18 @@ impl H1Protocol {
         });
 
         let transport = self.transport()?;
-
         let server = (transport.server.ip().to_string(), transport.server.port());
-
         let client = (transport.client.ip().to_string(), transport.client.port());
-
         let schema = if transport.tls { "https" } else { "http" };
 
-        let scope: lsgi::PSGIScope = (
-            lsgi::SCOPE_TYPE,
+        let scope: psgi::PSGIScope = (
+            psgi::SCOPE_TYPE,
             version,
             method,
             schema,
             uri.path(),
             uri.query().unwrap_or(""),
-            lsgi::TEMP_ROOT_PATH,
+            psgi::TEMP_ROOT_PATH,
             headers_new,
             server,
             client,
