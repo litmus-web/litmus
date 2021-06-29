@@ -1,4 +1,4 @@
-[![CodeFactor](https://www.codefactor.io/repository/github/project-dream-weaver/pyre/badge)](https://www.codefactor.io/repository/github/project-dream-weaver/pyre)
+[![CodeFactor](https://www.codefactor.io/repository/github/project-dream-weaver/pyre-http/badge)](https://www.codefactor.io/repository/github/project-dream-weaver/pyre-http)
 # Pyre
 **NOTE: THIS IS NOT PRODUCTION READY AS OF YET**
 A fast asynchronous HTTP server and framework written in Rust for Python. To live and die by speed.
