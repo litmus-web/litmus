@@ -7,7 +7,7 @@ use crate::settings::Settings;
 use crate::traits::{BaseTransport, BufferHandler, ProtocolBuffers, SocketState};
 use crate::transport::Transport;
 
-const BUFFER_SIZE: usize = 256 * 1024;
+const BUFFER_SIZE: usize = 32 * 1024;
 
 #[derive(Copy, Clone)]
 pub(crate) enum Protocols {
