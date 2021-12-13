@@ -7,8 +7,7 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies.pyo3]
-git = "https://github.com/PyO3/pyo3.git"
-branch = "main"
+version = "0.14.5"
 features = ["extension-module"]
 
 [dependencies]

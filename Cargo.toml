@@ -11,8 +11,7 @@ name = "pyre_http"
 crate-type = ["cdylib"]
 
 [dependencies.pyo3]
-git = "https://github.com/PyO3/pyo3.git"
-branch = "main"
+version = "0.14.5"
 features = ["extension-module"]
 
 [dependencies]
