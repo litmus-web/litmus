@@ -1,5 +1,5 @@
-/target
-Cargo.lock
+**/target
+**/Cargo.lock
 /venv/
 /.idea
 .vscode/settings.json
