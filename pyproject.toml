@@ -1,0 +1,18 @@
+[tool.poetry]
+name = "litmus"
+version = "0.1.0"
+description = ""
+authors = ["Harrison Burt <harrison.burt@baringacc01.onmicrosoft.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.8"
+
+[tool.poetry.dev-dependencies]
+maturin = "^0.12.5"
+uvicorn = "^0.16.0"
+fastapi = "^0.70.1"
+httptools = "^0.3.0"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
