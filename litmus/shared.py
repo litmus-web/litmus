@@ -39,14 +39,14 @@ class Server:
     def __init__(
         self,
         app_callback,
-        listen_on: List[str] = None,
+        listen_on: List[str] = "127.0.0.1:8080",
         backlog: int = 1024,
         keep_alive: int = 5,
         gc_interval: int = 60,
         keep_alive_interval: int = 1,
     ):
-        if listen_on is None:
-            listen_on = ["127.0.0.1:8080"]
+        if isinstance(listen_on, str):
+            listen_on = [listen_on]
 
         self.app = app_callback
         self.loop = asyncio.get_running_loop()
@@ -73,16 +73,6 @@ class Server:
             self._close_socket,
         )
         self._kai_task = self.loop.call_later(self.keep_alive_interval, self._poll_keep_alive)
-        self._gci_task = self.loop.call_later(self.gc_interval, self._activate_gc)
-
-    def _activate_gc(self):
-        self._server.purge_clients()
-
-        if not self._shutdown:
-            self.loop.call_later(
-                self.gc_interval,
-                self._activate_gc,
-            )
 
     def _poll_keep_alive(self):
         self._server.poll_keep_alive()

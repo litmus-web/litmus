@@ -1,7 +1,6 @@
 use pyo3::exceptions::PyRuntimeError;
 use pyo3::prelude::*;
 
-use crossbeam::queue::ArrayQueue;
 use slab::Slab;
 
 use crate::event_loop::{EventLoop, PreSetEventLoop};
@@ -32,9 +31,6 @@ pub(crate) struct ClientManager<C: Reusable + PollHandler> {
     /// A slab of clients.
     clients: Slab<Option<C>>,
 
-    /// A queue of free clients that are currently idle.
-    free_clients: ArrayQueue<usize>,
-
     /// The set event loop which mirrors handles in Python.
     event_loop: EventLoop,
 
@@ -50,7 +46,6 @@ impl<C: Reusable + PollHandler> ClientManager<C> {
     ) -> Self {
         Self {
             clients: Slab::with_capacity(MAX_QUEUE_SIZE),
-            free_clients: ArrayQueue::new(MAX_QUEUE_SIZE),
             callback,
             event_loop,
             settings,
@@ -58,39 +53,20 @@ impl<C: Reusable + PollHandler> ClientManager<C> {
     }
 
     pub(crate) fn handle_connection(&mut self, conn: StreamHandle) -> PyResult<()> {
-        if let Some(index) = self.free_clients.pop() {
-            debug!(
-                "reusing index {} for new connection: {:?}",
-                index, conn.addr
-            );
-            let handle = self.clients[index]
-                .as_mut()
-                .expect("client was labeled as free but set to non in slab");
-            handle.set_connection(conn)?;
-        } else {
-            let index = self.clients.insert(None);
-            debug!(
-                "creating new index {} for new connection: {:?}",
-                index, conn.addr
-            );
-            let el = PreSetEventLoop::new(self.event_loop.clone(), conn.fd(), index);
-            let handle = C::new(self.callback.clone(), el, conn, self.settings.clone())?;
-            self.clients[index].replace(handle);
-        }
+        let index = self.clients.insert(None);
+        debug!(
+            "creating new index {} for new connection: {:?}",
+            index, conn.addr
+        );
+        let el = PreSetEventLoop::new(self.event_loop.clone(), conn.fd(), index);
+        let handle = C::new(self.callback.clone(), el, conn, self.settings.clone())?;
+        self.clients[index].replace(handle);
 
         Ok(())
     }
 
     pub(crate) fn len_clients(&self) -> usize {
         self.clients.len()
-    }
-
-    pub(crate) fn purge_clients(&mut self) {
-        debug!("purging {} free clients", self.free_clients.len());
-
-        while let Some(free) = self.free_clients.pop() {
-            self.clients.remove(free);
-        }
     }
 }
 
@@ -137,12 +113,7 @@ impl<C: Reusable + PollHandler> RawPollHandler for ClientManager<C> {
                 client.poll_keep_alive()?;
             } else if !client.is_free() {
                 client.set_free();
-
-                // If we error we know we have the max number of free clients
-                // and can dispose of surplus connections.
-                if let Err(_) = self.free_clients.push(id) {
-                    remove.push(id);
-                };
+                remove.push(id);
             }
         }
 
@@ -159,10 +130,6 @@ impl<C: Reusable + PollHandler> RawPollHandler for ClientManager<C> {
             if let Some(cli) = v {
                 cli.shutdown()?;
             };
-        }
-
-        while let Some(_) = self.free_clients.pop() {
-            continue;
         }
 
         Ok(())

@@ -136,10 +136,6 @@ impl Server {
         self.manager().len_clients()
     }
 
-    fn purge_clients(&mut self) {
-        self.manager().purge_clients()
-    }
-
     #[timed::timed(duration(printer = "trace!"))]
     fn poll_accept(&mut self, index: usize) -> PyResult<()> {
         let listener = &self.listeners[index];

@@ -1,5 +1,5 @@
 import asyncio
-import pyre_http as pyre
+import litmus as pyre
 
 from fastapi import FastAPI
 pyre.set_log_level("debug")
@@ -24,7 +24,7 @@ async def hello_world():
 async def main():
     global server
     runner = pyre.LSGIToASGIAdapter(app)
-    server = pyre.Server(runner)
+    server = pyre.Server(runner, listen_on="0.0.0.0:8000")
     server.ignite()
     await server.run_forever()
 

@@ -1,5 +1,5 @@
 [package]
-name = "pyre-http"
+name = "litmus-web"
 version = "0.1.0"
 authors = ["Harrison Burt <57491488+ChillFish8@users.noreply.github.com>"]
 edition = "2018"
@@ -7,7 +7,7 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [lib]
-name = "pyre_http"
+name = "litmus"
 crate-type = ["cdylib"]
 
 [dependencies.pyo3]
@@ -15,8 +15,10 @@ version = "0.14.5"
 features = ["extension-module"]
 
 [dependencies]
-pyre-server = { version = "*", path = "pyre-server" }
-pretty_env_logger = "0.4.0"
+litmus-server = { version = "*", path = "litmus-server" }
+log = "0.4"
+chrono = "0.4.19"
+fern = { version = "0.6", features = ["colored"] }
 
 [target.'cfg(not(target_env = "msvc"))'.dependencies]
 jemallocator = { version="^0.3.2", features = ["disable_initial_exec_tls", "background_threads"] }

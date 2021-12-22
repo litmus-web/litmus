@@ -1,10 +1,12 @@
-extern crate pretty_env_logger;
-
 use pyo3::prelude::*;
 use pyo3::wrap_pyfunction;
+use pyo3::exceptions::PyValueError;
 
-use std::env;
+use std::str::FromStr;
 use std::time::Duration;
+
+use log::LevelFilter;
+use fern::colors::{Color, ColoredLevelConfig};
 
 #[cfg(not(target_env = "msvc"))]
 use jemallocator::Jemalloc;
@@ -13,19 +15,54 @@ use jemallocator::Jemalloc;
 #[global_allocator]
 static GLOBAL: Jemalloc = Jemalloc;
 
-use pyre_server::responders::{DataReceiver, DataSender};
-use pyre_server::server::Server;
-use pyre_server::settings::ServerSettings;
+use litmus_server::responders::{DataReceiver, DataSender};
+use litmus_server::server::Server;
+use litmus_server::settings::ServerSettings;
 
 
 #[pyfunction]
-pub fn set_log_level(log_level: &str) {
-    let _ = env::set_var("RUST_LOG", log_level);
-}
+pub fn init_logger(
+    log_level: &str,
+    log_file: Option<String>,
+    pretty: bool,
+) -> PyResult<()> {
+    let level = match LevelFilter::from_str(log_level) {
+        Ok(l) => l,
+        Err(e) => return Err(PyValueError::new_err(e.to_string()))
+    };
 
-#[pyfunction]
-pub fn init_logger() {
-    pretty_env_logger::init();
+    let mut colours = ColoredLevelConfig::new();
+
+    if pretty {
+        colours = colours
+            .info(Color::Green)
+            .warn(Color::Yellow)
+            .error(Color::BrightRed)
+            .debug(Color::Magenta)
+            .trace(Color::Cyan);
+    }
+
+    let mut builder = fern::Dispatch::new()
+        .format(move |out, message, record| {
+            out.finish(format_args!(
+                "{} | {} | {:<5} - {}",
+                chrono::Local::now().format("[%Y-%m-%d][%H:%M:%S]"),
+                record.target(),
+                colours.color(record.level()),
+                message,
+            ))
+        })
+        .level(level)
+        .level_for("compress", LevelFilter::Off)
+        .chain(std::io::stdout());
+
+    if let Some(file) = log_file {
+        builder = builder.chain(fern::log_file(file)?);
+    }
+
+    let _ = builder.apply();
+
+    Ok(())
 }
 
 
@@ -47,9 +84,8 @@ pub fn create_server(
 }
 
 #[pymodule]
-fn pyre_http(_py: Python, m: &PyModule) -> PyResult<()> {
+fn litmus(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(create_server, m)?)?;
-    m.add_function(wrap_pyfunction!(set_log_level, m)?)?;
     m.add_function(wrap_pyfunction!(init_logger, m)?)?;
     m.add_class::<Server>()?;
     m.add_class::<DataSender>()?;
