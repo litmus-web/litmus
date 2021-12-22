@@ -1,11 +1,14 @@
 import asyncio
 import litmus
+import uvloop
 
 from fastapi import FastAPI
-litmus.set_log_level("debug")
-litmus.init_logger()
 
-asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+uvloop.install()
+
+litmus.init_logger("info", None, True)
+
+# asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 app = FastAPI()
 server = None
