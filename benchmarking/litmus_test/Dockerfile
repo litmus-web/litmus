@@ -9,9 +9,9 @@ ENV PATH="/root/.cargo/bin:${PATH}"
 
 RUN mkdir /code
 WORKDIR /code
-RUN git clone https://github.com/Project-Dream-Weaver/pyre.git
+RUN git clone https://github.com/litmus-web/litmus.git
 
-WORKDIR /code/pyre
+WORKDIR /code/litmus
 COPY ./requirements.txt .
 RUN python -m venv /opt/venv
 RUN . /opt/venv/bin/activate && pip install -r requirements.txt

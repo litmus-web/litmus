@@ -308,7 +308,7 @@ impl H1Protocol {
         let client = (transport.client.ip().to_string(), transport.client.port());
         let schema = if transport.tls { "https" } else { "http" };
 
-        let scope: psgi::PSGIScope = (
+        let scope: psgi::LSGIScope = (
             psgi::SCOPE_TYPE,
             version,
             method,

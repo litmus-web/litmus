@@ -24,9 +24,9 @@ pub const HTTP_11: &str = "1.1";
 /// The HTTP/2 specification
 pub const _HTTP_2: &str = "2";
 
-/// The PSGI (Pyre Server Gateway Interface) scope that contains all state of the server and
+/// The LSGI (Litmus Server Gateway Interface) scope that contains all state of the server and
 /// request.
-pub type PSGIScope<'a> = (
+pub type LSGIScope<'a> = (
     // type
     //
     // The type of scope, for a request this is "http"

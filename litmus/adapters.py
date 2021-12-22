@@ -8,7 +8,7 @@ class LSGIToASGIAdapter:
 
     async def __call__(self, scope, send, receive):
         """
-        The LSGI (Pyre Server Gateway Interface) callback handler used
+        The LSGI (Litmus Server Gateway Interface) callback handler used
         to interact with the framework.
 
         Args:
