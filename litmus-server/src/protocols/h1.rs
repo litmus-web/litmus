@@ -1,20 +1,17 @@
 #![allow(deprecated)]
 
+use std::{mem, str};
+
+use bytes::BytesMut;
+use http::header::{CONTENT_LENGTH, TRANSFER_ENCODING};
+use http::uri::Uri;
+use httparse::{parse_chunk_size, Header, Request, Status};
 use pyo3::exceptions::PyRuntimeError;
 use pyo3::types::PyBytes;
 use pyo3::{Py, PyResult, Python};
 
-use std::mem;
-use std::str;
-
-use bytes::BytesMut;
-
-use http::header::{CONTENT_LENGTH, TRANSFER_ENCODING};
-use http::uri::Uri;
-use httparse::{parse_chunk_size, Header, Request, Status};
-
-use crate::psgi;
 use crate::protocols::selector::SwitchStatus;
+use crate::psgi;
 use crate::responders::{ReceiverFactory, SenderFactory};
 use crate::server::CallbackHandler;
 use crate::settings::Settings;
@@ -218,7 +215,10 @@ impl H1Protocol {
         Ok(())
     }
 
-    fn drain_body_chunks(&mut self, buffer: &mut BytesMut) -> PyResult<Option<(bool, BytesMut)>> {
+    fn drain_body_chunks(
+        &mut self,
+        buffer: &mut BytesMut,
+    ) -> PyResult<Option<(bool, BytesMut)>> {
         let mut temp_buff = BytesMut::with_capacity(FORGIVING_BUFFER_SIZE);
         loop {
             let res = conv_err!(parse_chunk_size(&buffer))?;
@@ -230,7 +230,7 @@ impl H1Protocol {
                     } else {
                         Ok(Some((true, temp_buff)))
                     }
-                }
+                },
             };
 
             if len == 0 {

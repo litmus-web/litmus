@@ -1,15 +1,13 @@
-use pyo3::prelude::*;
-use pyo3::wrap_pyfunction;
-use pyo3::exceptions::PyValueError;
-
 use std::str::FromStr;
 use std::time::Duration;
 
-use log::LevelFilter;
 use fern::colors::{Color, ColoredLevelConfig};
-
 #[cfg(not(target_env = "msvc"))]
 use jemallocator::Jemalloc;
+use log::LevelFilter;
+use pyo3::exceptions::PyValueError;
+use pyo3::prelude::*;
+use pyo3::wrap_pyfunction;
 
 #[cfg(not(target_env = "msvc"))]
 #[global_allocator]
@@ -19,7 +17,6 @@ use litmus_server::responders::{DataReceiver, DataSender};
 use litmus_server::server::Server;
 use litmus_server::settings::ServerSettings;
 
-
 #[pyfunction]
 pub fn init_logger(
     log_level: &str,
@@ -28,7 +25,7 @@ pub fn init_logger(
 ) -> PyResult<()> {
     let level = match LevelFilter::from_str(log_level) {
         Ok(l) => l,
-        Err(e) => return Err(PyValueError::new_err(e.to_string()))
+        Err(e) => return Err(PyValueError::new_err(e.to_string())),
     };
 
     let mut colours = ColoredLevelConfig::new();
@@ -64,7 +61,6 @@ pub fn init_logger(
 
     Ok(())
 }
-
 
 #[pyfunction]
 pub fn create_server(

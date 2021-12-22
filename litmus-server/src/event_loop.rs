@@ -1,7 +1,7 @@
-use pyo3::prelude::*;
-
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+
+use pyo3::prelude::*;
 
 type CheapPyObject = Arc<PyObject>;
 

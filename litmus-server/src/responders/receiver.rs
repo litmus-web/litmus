@@ -1,11 +1,11 @@
-use pyo3::exceptions::{PyBlockingIOError, PyRuntimeError};
-use pyo3::prelude::*;
-use pyo3::types::PyBytes;
+use std::sync::Arc;
 
 use bytes::BytesMut;
 use crossbeam::channel::{bounded, Receiver, Sender, TryRecvError, TrySendError};
 use crossbeam::queue::SegQueue;
-use std::sync::Arc;
+use pyo3::exceptions::{PyBlockingIOError, PyRuntimeError};
+use pyo3::prelude::*;
+use pyo3::types::PyBytes;
 
 use super::{ReceiverPayload, WakerQueue};
 
@@ -120,9 +120,13 @@ impl ReceiverFactory {
     /// from the handler, unlike the receiver version of this responder
     /// this will only pop one waiter from the queue and pass it the chunk
     /// of data vs waking all waiters.
-    pub fn send(&self, data: (bool, BytesMut)) -> Result<(), TrySendError<ReceiverPayload>> {
+    pub fn send(
+        &self,
+        data: (bool, BytesMut),
+    ) -> Result<(), TrySendError<ReceiverPayload>> {
         Python::with_gil(|py| {
-            let bytes_body = unsafe { PyBytes::from_ptr(py, data.1.as_ptr(), data.1.len()) };
+            let bytes_body =
+                unsafe { PyBytes::from_ptr(py, data.1.as_ptr(), data.1.len()) };
             let body = Py::from(bytes_body);
 
             if self.waiter_queue.len() > 0 {

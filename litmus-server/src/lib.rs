@@ -3,10 +3,10 @@ extern crate log;
 
 mod client;
 mod event_loop;
-mod psgi;
 mod manager;
 mod net;
 mod protocols;
+mod psgi;
 pub mod responders;
 pub mod server;
 pub mod settings;

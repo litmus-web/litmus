@@ -1,7 +1,7 @@
+use std::sync::Arc;
+
 use pyo3::prelude::*;
 use pyo3::types::PyTuple;
-
-use std::sync::Arc;
 
 use crate::client::ClientHandler;
 use crate::event_loop::EventLoop;

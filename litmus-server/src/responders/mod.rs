@@ -1,7 +1,8 @@
+use std::sync::Arc;
+
 use crossbeam::queue::SegQueue;
 use pyo3::types::PyBytes;
 use pyo3::{Py, PyObject};
-use std::sync::Arc;
 
 mod receiver;
 mod sender;

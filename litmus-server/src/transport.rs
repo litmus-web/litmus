@@ -1,7 +1,9 @@
+use std::net::SocketAddr;
+
+use pyo3::PyResult;
+
 use crate::event_loop::PreSetEventLoop;
 use crate::traits::BaseTransport;
-use pyo3::PyResult;
-use std::net::SocketAddr;
 
 #[derive(Clone)]
 pub struct Transport {

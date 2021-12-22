@@ -109,7 +109,7 @@ impl BufferHandler for AutoProtocol {
         match self.selected {
             Protocols::H1 => {
                 self.h1.fill_write_buffer(&mut self.writer_buffer)?;
-            }
+            },
         };
 
         Ok(&mut self.writer_buffer)

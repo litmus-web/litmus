@@ -1,5 +1,6 @@
-use pyo3::PyResult;
 use std::time::Instant;
+
+use pyo3::PyResult;
 
 use crate::event_loop::PreSetEventLoop;
 use crate::net::{SocketStatus, StreamHandle};
@@ -38,7 +39,8 @@ impl Reusable for ClientHandler {
             event_loop.clone(),
         );
 
-        let protocol = AutoProtocol::new(settings.clone(), Protocols::H1, transport, callback);
+        let protocol =
+            AutoProtocol::new(settings.clone(), Protocols::H1, transport, callback);
 
         Ok(Self {
             event_loop,
@@ -82,7 +84,7 @@ impl PollHandler for ClientHandler {
                 self.is_idle = true;
                 self.idle_for = Instant::now();
                 return self.shutdown();
-            }
+            },
         };
 
         // EOF
@@ -111,7 +113,7 @@ impl PollHandler for ClientHandler {
                 self.is_idle = true;
                 self.idle_for = Instant::now();
                 return self.shutdown();
-            }
+            },
         };
 
         self.protocol.write_buffer_drained(len)?;

@@ -1,10 +1,9 @@
-use pyo3::exceptions::PyBlockingIOError;
-use pyo3::prelude::*;
+use std::sync::Arc;
 
 use crossbeam::channel::{bounded, Receiver, Sender, TryRecvError, TrySendError};
 use crossbeam::queue::SegQueue;
-
-use std::sync::Arc;
+use pyo3::exceptions::PyBlockingIOError;
+use pyo3::prelude::*;
 
 use super::{SenderPayload, WakerQueue};
 
@@ -93,7 +92,11 @@ impl DataSender {
     ///
     ///     body:
     ///         A chunk of bytes to be written to the socket.
-    fn send_start(&mut self, status_code: u16, resp_headers: Vec<(&[u8], &[u8])>) -> PyResult<()> {
+    fn send_start(
+        &mut self,
+        status_code: u16,
+        resp_headers: Vec<(&[u8], &[u8])>,
+    ) -> PyResult<()> {
         let mut keep_alive = true;
         let mut out = Vec::with_capacity(resp_headers.len() + 4);
 
@@ -128,7 +131,7 @@ impl DataSender {
                         .expect("content length header is not ASCII encodable")
                         .parse()
                         .expect("content length header contains invalid integer")
-                }
+                },
                 &http::header::TRANSFER_ENCODING => {
                     let temp_val = value.as_ref();
                     if temp_val.len() == 7 {
@@ -147,7 +150,7 @@ impl DataSender {
                             self.chunked_encoding = Some(true);
                         }
                     };
-                }
+                },
                 &http::header::CONNECTION => {
                     let temp_val = value.as_ref();
                     if temp_val.len() == 5 {
@@ -161,8 +164,8 @@ impl DataSender {
                             keep_alive = false;
                         }
                     }
-                }
-                _ => {}
+                },
+                _ => {},
             }
 
             let res = [name.as_ref(), value.as_bytes()].join(HEADER_SEPARATOR);

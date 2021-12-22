@@ -1,11 +1,9 @@
 use std::io::ErrorKind;
 use std::net::{SocketAddr, TcpListener};
-
-#[cfg(windows)]
-use std::os::windows::io::AsRawSocket;
-
 #[cfg(unix)]
 use std::os::unix::io::AsRawFd;
+#[cfg(windows)]
+use std::os::windows::io::AsRawSocket;
 
 use pyo3::{PyErr, PyResult};
 
@@ -52,7 +50,9 @@ impl NoneBlockingListener {
     pub fn accept(&self) -> PyResult<Status<StreamHandle>> {
         let (stream, addr) = match self.listener.accept() {
             Ok(pair) => pair,
-            Err(ref e) if e.kind() == ErrorKind::WouldBlock => return Ok(Status::ShouldPause),
+            Err(ref e) if e.kind() == ErrorKind::WouldBlock => {
+                return Ok(Status::ShouldPause)
+            },
             Err(e) => return Err(PyErr::from(e)),
         };
 

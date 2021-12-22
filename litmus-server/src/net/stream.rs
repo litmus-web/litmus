@@ -1,11 +1,9 @@
 use std::io::{ErrorKind, Read, Write};
 use std::net::{Shutdown, SocketAddr, TcpStream};
-
-#[cfg(windows)]
-use std::os::windows::io::AsRawSocket;
-
 #[cfg(unix)]
 use std::os::unix::io::AsRawFd;
+#[cfg(windows)]
+use std::os::windows::io::AsRawSocket;
 
 use bytes::{BufMut, BytesMut};
 use pyo3::{PyErr, PyResult};
@@ -60,17 +58,20 @@ impl StreamHandle {
     #[timed::timed(duration(printer = "trace!"))]
     pub fn read(&mut self, buffer: &mut BytesMut) -> PyResult<SocketStatus> {
         let data = buffer.chunk_mut();
-        let mut slice = unsafe { std::slice::from_raw_parts_mut(data.as_mut_ptr(), data.len()) };
+        let mut slice =
+            unsafe { std::slice::from_raw_parts_mut(data.as_mut_ptr(), data.len()) };
 
         let len = match self.stream.read(&mut slice) {
             Ok(n) => n,
-            Err(ref e) if e.kind() == ErrorKind::WouldBlock => return Ok(SocketStatus::WouldBlock),
+            Err(ref e) if e.kind() == ErrorKind::WouldBlock => {
+                return Ok(SocketStatus::WouldBlock)
+            },
             Err(ref e) if e.kind() == ErrorKind::ConnectionReset => {
                 return Ok(SocketStatus::Disconnect)
-            }
+            },
             Err(ref e) if e.kind() == ErrorKind::ConnectionAborted => {
                 return Ok(SocketStatus::Disconnect)
-            }
+            },
             Err(e) => return Err(PyErr::from(e)),
         };
 
@@ -88,13 +89,15 @@ impl StreamHandle {
     pub fn write(&mut self, buffer: &mut BytesMut) -> PyResult<SocketStatus> {
         let len = match self.stream.write(buffer) {
             Ok(n) => n,
-            Err(ref e) if e.kind() == ErrorKind::WouldBlock => return Ok(SocketStatus::WouldBlock),
+            Err(ref e) if e.kind() == ErrorKind::WouldBlock => {
+                return Ok(SocketStatus::WouldBlock)
+            },
             Err(ref e) if e.kind() == ErrorKind::ConnectionReset => {
                 return Ok(SocketStatus::Disconnect)
-            }
+            },
             Err(ref e) if e.kind() == ErrorKind::ConnectionAborted => {
                 return Ok(SocketStatus::Disconnect)
-            }
+            },
             Err(e) => return Err(PyErr::from(e)),
         };
 
