@@ -1,9 +1,9 @@
 import asyncio
-import litmus as pyre
+import litmus
 
 from fastapi import FastAPI
-pyre.set_log_level("debug")
-pyre.init_logger()
+litmus.set_log_level("debug")
+litmus.init_logger()
 
 asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
@@ -23,8 +23,8 @@ async def hello_world():
 
 async def main():
     global server
-    runner = pyre.LSGIToASGIAdapter(app)
-    server = pyre.Server(runner, listen_on="0.0.0.0:8000")
+    runner = litmus.LSGIToASGIAdapter(app)
+    server = litmus.Server(runner, listen_on="0.0.0.0:8000")
     server.ignite()
     await server.run_forever()
 

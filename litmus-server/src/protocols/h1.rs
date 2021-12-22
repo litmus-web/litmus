@@ -11,7 +11,7 @@ use pyo3::types::PyBytes;
 use pyo3::{Py, PyResult, Python};
 
 use crate::protocols::selector::SwitchStatus;
-use crate::psgi;
+use crate::lsgi;
 use crate::responders::{ReceiverFactory, SenderFactory};
 use crate::server::CallbackHandler;
 use crate::settings::Settings;
@@ -279,10 +279,10 @@ impl H1Protocol {
 
         let version = if version == 0 {
             self.keep_alive = false;
-            psgi::HTTP_10
+            lsgi::HTTP_10
         } else if version == 1 {
             self.keep_alive = true;
-            psgi::HTTP_11
+            lsgi::HTTP_11
         } else {
             unreachable!()
         };
@@ -308,14 +308,14 @@ impl H1Protocol {
         let client = (transport.client.ip().to_string(), transport.client.port());
         let schema = if transport.tls { "https" } else { "http" };
 
-        let scope: psgi::LSGIScope = (
-            psgi::SCOPE_TYPE,
+        let scope: lsgi::LSGIScope = (
+            lsgi::SCOPE_TYPE,
             version,
             method,
             schema,
             uri.path(),
             uri.query().unwrap_or(""),
-            psgi::TEMP_ROOT_PATH,
+            lsgi::TEMP_ROOT_PATH,
             headers_new,
             server,
             client,

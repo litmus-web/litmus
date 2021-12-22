@@ -6,7 +6,7 @@ mod event_loop;
 mod manager;
 mod net;
 mod protocols;
-mod psgi;
+mod lsgi;
 pub mod responders;
 pub mod server;
 pub mod settings;
