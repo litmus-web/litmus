@@ -87,7 +87,7 @@ impl Server {
 
 #[pymethods]
 impl Server {
-    /// Run pyre
+    /// Run litmus
     fn ignite(&mut self, py: Python, accept_callback: PyObject) -> PyResult<()> {
         let start = std::time::Instant::now();
         for (index, listener) in self.listeners.iter().enumerate() {
